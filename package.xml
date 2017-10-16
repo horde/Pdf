@@ -23,7 +23,7 @@
   <email>mike@maintainable.com</email>
   <active>yes</active>
  </lead>
- <date>2016-02-01</date>
+ <date>2017-10-17</date>
  <version>
   <release>2.0.8</release>
   <api>1.0.0</api>
@@ -38,13 +38,6 @@
  </notes>
  <contents>
   <dir baseinstalldir="/" name="/">
-   <dir name="doc">
-    <dir name="Horde">
-     <dir name="Pdf">
-      <file name="COPYING" role="doc" />
-     </dir> <!-- /doc/Horde/Pdf -->
-    </dir> <!-- /doc/Horde -->
-   </dir> <!-- /doc -->
    <dir name="lib">
     <dir name="Horde">
      <dir name="Pdf">
@@ -92,6 +85,7 @@
      </dir> <!-- /test/Horde/Pdf -->
     </dir> <!-- /test/Horde -->
    </dir> <!-- /test -->
+   <file name="LICENSE" role="doc" />
   </dir> <!-- / -->
  </contents>
  <dependencies>
@@ -131,9 +125,7 @@
  </dependencies>
  <phprelease>
   <filelist>
-   <install as="COPYING" name="doc/Horde/Pdf/COPYING" />
    <install as="Horde/Pdf/Exception.php" name="lib/Horde/Pdf/Exception.php" />
-   <install as="Horde/Pdf/Writer.php" name="lib/Horde/Pdf/Writer.php" />
    <install as="Horde/Pdf/Font/Courier.php" name="lib/Horde/Pdf/Font/Courier.php" />
    <install as="Horde/Pdf/Font/Courierb.php" name="lib/Horde/Pdf/Font/Courierb.php" />
    <install as="Horde/Pdf/Font/Courierbi.php" name="lib/Horde/Pdf/Font/Courierbi.php" />
@@ -148,10 +140,10 @@
    <install as="Horde/Pdf/Font/Timesbi.php" name="lib/Horde/Pdf/Font/Timesbi.php" />
    <install as="Horde/Pdf/Font/Timesi.php" name="lib/Horde/Pdf/Font/Timesi.php" />
    <install as="Horde/Pdf/Font/Zapfdingbats.php" name="lib/Horde/Pdf/Font/Zapfdingbats.php" />
+   <install as="Horde/Pdf/Writer.php" name="lib/Horde/Pdf/Writer.php" />
+   <install as="LICENSE" name="LICENSE" />
    <install as="Horde/Pdf/AllTests.php" name="test/Horde/Pdf/AllTests.php" />
    <install as="Horde/Pdf/bootstrap.php" name="test/Horde/Pdf/bootstrap.php" />
-   <install as="Horde/Pdf/phpunit.xml" name="test/Horde/Pdf/phpunit.xml" />
-   <install as="Horde/Pdf/WriterTest.php" name="test/Horde/Pdf/WriterTest.php" />
    <install as="Horde/Pdf/fixtures/20k_c1.txt" name="test/Horde/Pdf/fixtures/20k_c1.txt" />
    <install as="Horde/Pdf/fixtures/20k_c2.txt" name="test/Horde/Pdf/fixtures/20k_c2.txt" />
    <install as="Horde/Pdf/fixtures/auto_break.pdf" name="test/Horde/Pdf/fixtures/auto_break.pdf" />
@@ -163,6 +155,8 @@
    <install as="Horde/Pdf/fixtures/links.pdf" name="test/Horde/Pdf/fixtures/links.pdf" />
    <install as="Horde/Pdf/fixtures/text_color.pdf" name="test/Horde/Pdf/fixtures/text_color.pdf" />
    <install as="Horde/Pdf/fixtures/underline.pdf" name="test/Horde/Pdf/fixtures/underline.pdf" />
+   <install as="Horde/Pdf/phpunit.xml" name="test/Horde/Pdf/phpunit.xml" />
+   <install as="Horde/Pdf/WriterTest.php" name="test/Horde/Pdf/WriterTest.php" />
   </filelist>
  </phprelease>
  <changelog>
@@ -404,7 +398,7 @@
    <stability>
     <release>stable</release>
     <api>stable</api></stability>
-   <date>2016-02-01</date>
+   <date>2017-10-17</date>
    <license uri="http://www.horde.org/licenses/lgpl21">LGPL-2.1</license>
    <notes>
 * 
