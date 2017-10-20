@@ -23,7 +23,7 @@
   <email>mike@maintainable.com</email>
   <active>yes</active>
  </lead>
- <date>2017-10-17</date>
+ <date>2017-10-20</date>
  <version>
   <release>2.0.8</release>
   <api>1.0.0</api>
@@ -80,7 +80,6 @@
       </dir> <!-- /test/Horde/Pdf/fixtures -->
       <file name="AllTests.php" role="test" />
       <file name="bootstrap.php" role="test" />
-      <file name="phpunit.xml" role="test" />
       <file name="WriterTest.php" role="test" />
      </dir> <!-- /test/Horde/Pdf -->
     </dir> <!-- /test/Horde -->
@@ -155,7 +154,6 @@
    <install as="Horde/Pdf/fixtures/links.pdf" name="test/Horde/Pdf/fixtures/links.pdf" />
    <install as="Horde/Pdf/fixtures/text_color.pdf" name="test/Horde/Pdf/fixtures/text_color.pdf" />
    <install as="Horde/Pdf/fixtures/underline.pdf" name="test/Horde/Pdf/fixtures/underline.pdf" />
-   <install as="Horde/Pdf/phpunit.xml" name="test/Horde/Pdf/phpunit.xml" />
    <install as="Horde/Pdf/WriterTest.php" name="test/Horde/Pdf/WriterTest.php" />
   </filelist>
  </phprelease>
@@ -398,7 +396,7 @@
    <stability>
     <release>stable</release>
     <api>stable</api></stability>
-   <date>2017-10-17</date>
+   <date>2017-10-20</date>
    <license uri="http://www.horde.org/licenses/lgpl21">LGPL-2.1</license>
    <notes>
 * 
