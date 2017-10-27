@@ -1,0 +1,122 @@
+----------
+v2.0.8-git
+----------
+
+
+------
+v2.0.7
+------
+
+[jan] Mark PHP 7 as supported.
+
+
+------
+v2.0.6
+------
+
+[mjr] Avoid some PHP warnings.
+
+
+------
+v2.0.5
+------
+
+[jan] Fix issues with certain locales like Turkish.
+
+
+------
+v2.0.4
+------
+
+[jan] Add Composer definition.
+
+
+------
+v2.0.3
+------
+
+[jan] Fix getFormatHeight() and getFormatWidth() in landscape mode.
+
+
+------
+v2.0.2
+------
+
+[jan] Fix swapped getFormatHeight() and getFormatWidth() methods (Bug #11762).
+
+
+------
+v2.0.1
+------
+
+[mms] Use new Horde_Test layout.
+
+
+------
+v2.0.0
+------
+
+First stable release for Horde 5.
+
+
+-----------
+v2.0.0beta1
+-----------
+
+First beta release for Horde 5.
+
+
+------------
+v2.0.0alpha1
+------------
+
+First alpha release for Horde 5.
+
+
+------
+v1.0.2
+------
+
+[gwr] Add missing font files.
+
+
+------
+v1.0.1
+------
+
+[jan] Fix setting Courier fonts with font style (PEAR Bug #18550).
+
+
+------
+v1.0.0
+------
+
+First stable release for Horde 4.
+
+
+---------
+v1.0.0RC2
+---------
+
+Second release candidate for Horde 4.
+
+
+---------
+v1.0.0RC1
+---------
+
+First release candidate for Horde 4.
+
+
+-----------
+v1.0.0beta1
+-----------
+
+First beta release for Horde 4.
+
+
+------------
+v1.0.0alpha1
+------------
+
+First alpha release for Horde 4.
