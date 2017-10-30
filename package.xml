@@ -23,7 +23,7 @@
   <email>mike@maintainable.com</email>
   <active>yes</active>
  </lead>
- <date>2016-02-01</date>
+ <date>2017-10-30</date>
  <version>
   <release>2.0.8</release>
   <api>1.0.0</api>
@@ -41,6 +41,7 @@
    <dir name="doc">
     <dir name="Horde">
      <dir name="Pdf">
+      <file name="CHANGES" role="doc" />
       <file name="COPYING" role="doc" />
      </dir> <!-- /doc/Horde/Pdf -->
     </dir> <!-- /doc/Horde -->
@@ -131,6 +132,7 @@
  </dependencies>
  <phprelease>
   <filelist>
+   <install as="CHANGES" name="doc/Horde/Pdf/CHANGES" />
    <install as="COPYING" name="doc/Horde/Pdf/COPYING" />
    <install as="Horde/Pdf/Exception.php" name="lib/Horde/Pdf/Exception.php" />
    <install as="Horde/Pdf/Writer.php" name="lib/Horde/Pdf/Writer.php" />
@@ -404,7 +406,7 @@
    <stability>
     <release>stable</release>
     <api>stable</api></stability>
-   <date>2016-02-01</date>
+   <date>2017-10-30</date>
    <license uri="http://www.horde.org/licenses/lgpl21">LGPL-2.1</license>
    <notes>
 * 
