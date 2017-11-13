@@ -1,8 +1,8 @@
 {
     "name": "horde/pdf",
-    "description": "Horde PDF library",
+    "description": "PDF writer library",
     "type": "library",
-    "homepage": "https://pear.horde.org",
+    "homepage": "https://www.horde.org/libraries/Horde_Pdf",
     "license": "LGPL-2.1",
     "authors": [
         {
@@ -22,7 +22,7 @@
         }
     ],
     "version": "2.0.8",
-    "time": "2017-10-20",
+    "time": "2017-11-11",
     "repositories": [
         {
             "type": "pear",

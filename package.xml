@@ -3,7 +3,7 @@
  <name>Horde_Pdf</name>
  <channel>pear.horde.org</channel>
  <extends>File_PDF</extends>
- <summary>Horde PDF library</summary>
+ <summary>PDF writer library</summary>
  <description>PDF generation using only PHP, without requiring any external libraries.</description>
  <lead>
   <name>Jan Schneider</name>
@@ -23,7 +23,7 @@
   <email>mike@maintainable.com</email>
   <active>yes</active>
  </lead>
- <date>2017-10-27</date>
+ <date>2017-11-11</date>
  <version>
   <release>2.0.8</release>
   <api>1.0.0</api>
@@ -404,7 +404,7 @@
    <stability>
     <release>stable</release>
     <api>stable</api></stability>
-   <date>2017-10-27</date>
+   <date>2017-11-11</date>
    <license uri="http://www.horde.org/licenses/lgpl21">LGPL-2.1</license>
    <notes>
 * 
