@@ -14,16 +14,16 @@ authors:
     active: true
     role: lead
   -
-    name: Chuck Hagenbuch
-    user: chuck
-    email: chuck@horde.org
-    active: true
-    role: lead
-  -
     name: Mike Naberezny
     user: mnaberez
     email: mike@maintainable.com
     active: true
+    role: lead
+  -
+    name: Chuck Hagenbuch
+    user: chuck
+    email: chuck@horde.org
+    active: false
     role: lead
 version:
   release: 2.0.8
