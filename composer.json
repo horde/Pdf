@@ -11,18 +11,18 @@
             "role": "lead"
         },
         {
-            "name": "Chuck Hagenbuch",
-            "email": "chuck@horde.org",
+            "name": "Mike Naberezny",
+            "email": "mike@maintainable.com",
             "role": "lead"
         },
         {
-            "name": "Mike Naberezny",
-            "email": "mike@maintainable.com",
+            "name": "Chuck Hagenbuch",
+            "email": "chuck@horde.org",
             "role": "lead"
         }
     ],
     "version": "2.0.8",
-    "time": "2017-11-11",
+    "time": "2017-11-14",
     "repositories": [
         {
             "type": "pear",

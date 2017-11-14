@@ -12,18 +12,18 @@
   <active>yes</active>
  </lead>
  <lead>
-  <name>Chuck Hagenbuch</name>
-  <user>chuck</user>
-  <email>chuck@horde.org</email>
-  <active>yes</active>
- </lead>
- <lead>
   <name>Mike Naberezny</name>
   <user>mnaberez</user>
   <email>mike@maintainable.com</email>
-  <active>yes</active>
+  <active>no</active>
  </lead>
- <date>2017-11-11</date>
+ <lead>
+  <name>Chuck Hagenbuch</name>
+  <user>chuck</user>
+  <email>chuck@horde.org</email>
+  <active>no</active>
+ </lead>
+ <date>2017-11-14</date>
  <version>
   <release>2.0.8</release>
   <api>1.0.0</api>
@@ -404,7 +404,7 @@
    <stability>
     <release>stable</release>
     <api>stable</api></stability>
-   <date>2017-11-11</date>
+   <date>2017-11-14</date>
    <license uri="http://www.horde.org/licenses/lgpl21">LGPL-2.1</license>
    <notes>
 * 
