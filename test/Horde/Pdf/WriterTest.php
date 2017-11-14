@@ -215,7 +215,7 @@ class Horde_Pdf_WriterTest extends PHPUnit_Framework_TestCase
         $pdf->write(15, 'here', $link);
         $pdf->addPage();
         $pdf->setLink($link);
-        $pdf->image(__DIR__ . '/fixtures/horde-power1.png', 15, 15, 0, 0, '', 'https://pear.horde.org/');
+        $pdf->image(__DIR__ . '/fixtures/horde-power1.png', 15, 15, 0, 0, '', 'http://pear.horde.org/');
         $actual = $pdf->getOutput();
 
         $expected = $this->fixture('links');
