@@ -2,7 +2,7 @@
 id: Pdf
 name: Pdf
 full: PDF writer library
-description: PDF generation using only PHP, without requiring any external libraries.
+description: A PDF generation library using only PHP, without requiring any external libraries.
 list: dev
 type: library
 homepage: https://www.horde.org/libraries/Horde_Pdf
