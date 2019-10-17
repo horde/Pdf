@@ -1198,7 +1198,7 @@ class Horde_Pdf_Writer
         $width = 0;
         $length = strlen($text);
         for ($i = 0; $i < $length; $i++) {
-            $width += $this->_current_font['cw'][$text{$i}];
+            $width += $this->_current_font['cw'][$text[$i]];
         }
 
         /* Adjust for word spacing. */
@@ -2138,7 +2138,7 @@ class Horde_Pdf_Writer
         $nl = 1;
         while ($i < $nb) {
             // Get next character.
-            $c = $s{$i};
+            $c = $s[$i];
             if ($c == "\n") {
                 // Explicit line break.
                 $this->cell($width, $height, substr($s, $j, $i - $j), 0, 2, '', 0, $link);
