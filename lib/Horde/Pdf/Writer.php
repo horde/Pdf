@@ -2313,7 +2313,7 @@ class Horde_Pdf_Writer
                 $type = substr($file, $pos + 1);
             }
 
-            $mqr = get_magic_quotes_runtime();
+            $mqr = function_exists("get_magic_quotes_runtime") ? @get_magic_quotes_runtime() : 0;
             if ($mqr) { set_magic_quotes_runtime(0); }
 
             $type = Horde_String::lower($type);
@@ -2705,7 +2705,7 @@ class Horde_Pdf_Writer
             $this->_out('endobj');
         }
 
-        $mqr = get_magic_quotes_runtime();
+        $mqr = function_exists("get_magic_quotes_runtime") ? @get_magic_quotes_runtime() : 0;
         if ($mqr) { set_magic_quotes_runtime(0); }
 
         foreach ($this->_font_files as $file => $info) {
