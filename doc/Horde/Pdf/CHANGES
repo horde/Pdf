@@ -1,6 +1,10 @@
-----------
-v2.0.8-git
-----------
+------
+v2.0.8
+------
+
+[mjr] PHP 7.4 compatibility fixes (Remi Collet <remi@famillecollet.com>, PR
+      #1).
+
 
 
 ------
