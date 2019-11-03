@@ -25,7 +25,7 @@
  </lead>
  <date>2019-11-03</date>
  <version>
-  <release>2.0.8</release>
+  <release>2.0.9</release>
   <api>1.0.0</api>
  </version>
  <stability>
@@ -34,7 +34,7 @@
  </stability>
  <license uri="http://www.horde.org/licenses/lgpl21">LGPL-2.1</license>
  <notes>
-* [mjr] PHP 7.4 compatibility fixes (Remi Collet &lt;remi@famillecollet.com&gt;, PR #1).
+* 
  </notes>
  <contents>
   <dir baseinstalldir="/" name="/">
@@ -434,6 +434,21 @@
    <license uri="http://www.horde.org/licenses/lgpl21">LGPL-2.1</license>
    <notes>
 * [mjr] PHP 7.4 compatibility fixes (Remi Collet &lt;remi@famillecollet.com&gt;, PR #1).
+   </notes>
+  </release>
+  <release>
+   <version>
+    <release>2.0.9</release>
+    <api>1.0.0</api>
+   </version>
+   <stability>
+    <release>stable</release>
+    <api>stable</api>
+   </stability>
+   <date>2019-11-03</date>
+   <license uri="http://www.horde.org/licenses/lgpl21">LGPL-2.1</license>
+   <notes>
+* 
    </notes>
   </release>
  </changelog>
