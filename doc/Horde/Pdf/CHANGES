@@ -1,6 +1,17 @@
-----------
-v2.0.8-git
-----------
+------------
+v3.0.0alpha1
+------------
+
+[rla] Package for H6 / composer installer.
+
+
+------
+v2.0.8
+------
+
+[mjr] PHP 7.4 compatibility fixes (Remi Collet <remi@famillecollet.com>, PR
+      #1).
+
 
 
 ------
