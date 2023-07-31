@@ -15,7 +15,7 @@
  * @package    Pdf
  * @subpackage UnitTests
  */
-class Horde_Pdf_WriterTest extends PHPUnit_Framework_TestCase
+class Horde_Pdf_WriterTest extends Horde_Test_Case
 {
     public function testFactoryWithOptions()
     {
@@ -227,6 +227,8 @@ class Horde_Pdf_WriterTest extends PHPUnit_Framework_TestCase
      */
     public function testCourierStyle()
     {
+        $this->expectNotToPerformAssertions();
+
         $pdf = new Horde_Pdf_Writer();
         $pdf->setFont('courier', 'B', 10);
     }
@@ -238,7 +240,7 @@ class Horde_Pdf_WriterTest extends PHPUnit_Framework_TestCase
         $filename = __DIR__ . "/fixtures/{$name}.pdf";
         $fixture = file_get_contents($filename);
 
-        $this->assertInternalType('string', $fixture);
+        $this->assertIsString($fixture);
         return $fixture;
     }
 
