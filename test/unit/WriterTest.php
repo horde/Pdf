@@ -1,25 +1,18 @@
 <?php
-/**
- * Horde_Pdf test suite
- *
- * @license    http://www.horde.org/licenses/lgpl21
- * @category   Horde
- * @package    Pdf
- * @subpackage UnitTests
- */
 
-/**
- * Horde_Pdf_test suite
- *
- * @category   Horde
- * @package    Pdf
- * @subpackage UnitTests
- */
-class Horde_Pdf_WriterTest extends PHPUnit_Framework_TestCase
+declare(strict_types=1);
+
+use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\TestCase;
+
+require_once __DIR__ . '/HeaderFooterStylesPdf.php';
+
+#[CoversClass(Horde_Pdf_Writer::class)]
+class WriterTest extends TestCase
 {
-    public function testFactoryWithOptions()
+    public function testFactoryWithOptions(): void
     {
-        $options = array('orientation' => 'L', 'unit' => 'pt', 'format' => 'A3');
+        $options = ['orientation' => 'L', 'unit' => 'pt', 'format' => 'A3'];
         $pdf = new Horde_Pdf_Writer($options);
 
         $this->assertEquals('L', $pdf->getDefaultOrientation());
@@ -27,7 +20,7 @@ class Horde_Pdf_WriterTest extends PHPUnit_Framework_TestCase
         $this->assertEquals(1190.55, $pdf->getFormatWidth());
     }
 
-    public function testFactoryWithDefaults()
+    public function testFactoryWithDefaults(): void
     {
         $pdf = new Horde_Pdf_Writer();
 
@@ -37,9 +30,9 @@ class Horde_Pdf_WriterTest extends PHPUnit_Framework_TestCase
         $this->assertEquals(595.28, $pdf->getFormatWidth());
     }
 
-    public function testHelloWorldUncompressed()
+    public function testHelloWorldUncompressed(): void
     {
-        $pdf = new Horde_Pdf_Writer(array('orientation' => 'P', 'format' => 'A4'));
+        $pdf = new Horde_Pdf_Writer(['orientation' => 'P', 'format' => 'A4']);
         $pdf->setInfo('CreationDate', $this->fixtureCreationDate());
         $pdf->open();
         $pdf->setCompression(false);
@@ -57,9 +50,9 @@ class Horde_Pdf_WriterTest extends PHPUnit_Framework_TestCase
         $this->assertEquals($expected, $actual);
     }
 
-    public function testHelloWorldCompressed()
+    public function testHelloWorldCompressed(): void
     {
-        $pdf = new Horde_Pdf_Writer(array('orientation' => 'P', 'format' => 'A4'));
+        $pdf = new Horde_Pdf_Writer(['orientation' => 'P', 'format' => 'A4']);
         $pdf->setInfo('CreationDate', $this->fixtureCreationDate());
         $pdf->open();
         $pdf->setCompression(false);
@@ -77,9 +70,9 @@ class Horde_Pdf_WriterTest extends PHPUnit_Framework_TestCase
         $this->assertEquals($expected, $actual);
     }
 
-    public function testAutoBreak()
+    public function testAutoBreak(): void
     {
-        $pdf = new Horde_Pdf_Writer(array('format' => array(50, 50), 'unit' => 'pt'));
+        $pdf = new Horde_Pdf_Writer(['format' => [50, 50], 'unit' => 'pt']);
         $pdf->setInfo('CreationDate', $this->fixtureCreationDate());
         $pdf->setCompression(false);
         $pdf->setMargins(0, 0);
@@ -95,36 +88,30 @@ class Horde_Pdf_WriterTest extends PHPUnit_Framework_TestCase
         $this->assertEquals($expected, $actual);
     }
 
-
-    public function testChangePage()
+    public function testChangePage(): void
     {
-        $pdf = new Horde_Pdf_Writer(array('format' => array(80, 80), 'unit' => 'pt'));
+        $pdf = new Horde_Pdf_Writer(['format' => [80, 80], 'unit' => 'pt']);
         $pdf->setInfo('CreationDate', $this->fixtureCreationDate());
         $pdf->setCompression(false);
         $pdf->setMargins(0, 0);
         $pdf->open();
 
-        // first page
         $pdf->addPage();
-
         $pdf->setFont('Courier', '', 10);
         $pdf->write(10, "Hello");
 
-        // second page
         $pdf->addPage();
 
-        // back to first page again
         $pdf->setPage(1);
         $pdf->write(10, "Goodbye");
 
-        // back to second page
         $pdf->setPage(2);
 
         $expected = $this->fixture('change_page');
         $this->assertEquals($expected, $pdf->getOutput());
     }
 
-    public function testTextColor()
+    public function testTextColor(): void
     {
         $pdf = new Horde_Pdf_Writer();
         $pdf->setInfo('CreationDate', $this->fixtureCreationDate());
@@ -142,7 +129,7 @@ class Horde_Pdf_WriterTest extends PHPUnit_Framework_TestCase
         $this->assertEquals($expected, $actual);
     }
 
-    public function testTextColorUsingHex()
+    public function testTextColorUsingHex(): void
     {
         $pdf = new Horde_Pdf_Writer();
         $pdf->setInfo('timestamp', $this->fixtureCreationDate());
@@ -160,9 +147,9 @@ class Horde_Pdf_WriterTest extends PHPUnit_Framework_TestCase
         $this->assertEquals('0.000 0.000 1.000 rg', $pdf->getFillColor());
     }
 
-    public function testUnderline()
+    public function testUnderline(): void
     {
-        $pdf = new Horde_Pdf_Writer(array('orientation' => 'P', 'format' => 'A4'));
+        $pdf = new Horde_Pdf_Writer(['orientation' => 'P', 'format' => 'A4']);
         $pdf->setInfo('CreationDate', $this->fixtureCreationDate());
         $pdf->open();
         $pdf->setCompression(false);
@@ -176,16 +163,13 @@ class Horde_Pdf_WriterTest extends PHPUnit_Framework_TestCase
         $this->assertEquals($expected, $actual);
     }
 
-    /**
-     * PEAR Bug #12310
-     */
-    public function testHeaderFooterStyles()
+    public function testHeaderFooterStyles(): void
     {
-        $pdf = new HeaderFooterStylesPdf(array(
+        $pdf = new HeaderFooterStylesPdf([
             'orientation' => 'P',
             'unit' => 'mm',
             'format' => 'A4',
-        ));
+        ]);
         $pdf->setCompression(false);
         $pdf->setInfo('title', '20000 Leagues Under the Seas');
         $pdf->setInfo('author', 'Jules Verne');
@@ -198,12 +182,9 @@ class Horde_Pdf_WriterTest extends PHPUnit_Framework_TestCase
         $this->assertEquals($expected, $actual);
     }
 
-    /**
-     * Horde Bug #5964
-     */
-    public function testLinks()
+    public function testLinks(): void
     {
-        $pdf = new Horde_Pdf_Writer(array('orientation' => 'P', 'format' => 'A4'));
+        $pdf = new Horde_Pdf_Writer(['orientation' => 'P', 'format' => 'A4']);
         $pdf->setInfo('CreationDate', $this->fixtureCreationDate());
         $pdf->open();
         $pdf->setCompression(false);
@@ -222,80 +203,24 @@ class Horde_Pdf_WriterTest extends PHPUnit_Framework_TestCase
         $this->assertEquals($expected, $actual);
     }
 
-    /**
-     * PEAR Bug #12310
-     */
-    public function testCourierStyle()
+    public function testCourierStyle(): void
     {
+        $this->expectNotToPerformAssertions();
         $pdf = new Horde_Pdf_Writer();
         $pdf->setFont('courier', 'B', 10);
     }
 
-    // Test Helpers
-
-    protected function fixture($name)
+    protected function fixture(string $name): string
     {
         $filename = __DIR__ . "/fixtures/{$name}.pdf";
         $fixture = file_get_contents($filename);
 
-        $this->assertInternalType('string', $fixture);
+        $this->assertIsString($fixture);
         return $fixture;
     }
 
-    protected function fixtureCreationDate()
+    protected function fixtureCreationDate(): string
     {
         return 'D:20071105152947';
     }
-
-}
-
-class HeaderFooterStylesPdf extends Horde_Pdf_Writer
-{
-    public function header()
-    {
-        $this->setFont('Arial', 'B', 15);
-        $w = $this->getStringWidth($this->_info['title']) + 6;
-        $this->setX((210 - $w) / 2);
-        $this->setDrawColor('rgb', 0/255, 80/255, 180/255);
-        $this->setFillColor('rgb', 230/255, 230/255, 0/255);
-        $this->setTextColor('rgb', 220/255, 50/255, 50/255);
-        $this->setLineWidth(1);
-        $this->cell($w, 9, $this->_info['title'], 1, 1, 'C', 1);
-        $this->newLine(10);
-    }
-
-    public function footer()
-    {
-        $this->setY(-15);
-        $this->setFont('Arial', 'I', 8);
-        $this->setTextColor('gray', 128/255);
-        $this->cell(0, 10, 'Page ' . $this->getPageNo(), 0, 0, 'C');
-    }
-
-    public function chapterTitle($num, $label)
-    {
-        $this->setFont('Arial', '', 12);
-        $this->setFillColor('rgb', 200/255, 220/255, 255/255);
-        $this->cell(0, 6, "Chapter $num : $label", 0, 1, 'L', 1);
-        $this->newLine(4);
-    }
-
-    public function chapterBody($file)
-    {
-        $filename = __DIR__ . "/fixtures/$file";
-        $text = file_get_contents($filename);
-        $this->setFont('Times', '', 12);
-        $this->multiCell(0, 5, $text);
-        $this->newLine();
-        $this->setFont('', 'I');
-        $this->cell(0, 5, '(end of extract)');
-    }
-
-    public function printChapter($num, $title, $file)
-    {
-        $this->addPage();
-        $this->chapterTitle($num, $title);
-        $this->chapterBody($file);
-    }
-
 }
