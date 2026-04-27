@@ -10,10 +10,16 @@ type: library
 homepage: https://www.horde.org/libraries/Horde_Pdf
 authors:
   -
+    name: Ralf Lang
+    user: rlang
+    email: ralf.lang@ralf-lang.de
+    active: trueB
+    role: lead
+  -
     name: Jan Schneider
     user: jan
     email: jan@horde.org
-    active: true
+    active: false
     role: lead
   -
     name: Mike Naberezny
@@ -45,3 +51,9 @@ dependencies:
   optional:
     composer:
       horde/test: ^3
+keywords:
+  - iso32000
+vendor: horde
+quality:
+  phpstan:
+    level: 3
