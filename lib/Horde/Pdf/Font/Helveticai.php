@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Horde_Pdf package
  *
@@ -15,10 +16,9 @@
  */
 class Horde_Pdf_Font_Helveticai
 {
-
     public function getWidths()
     {
-        return array('helveticaI' => array(
+        return ['helveticaI' => [
             chr(0) => 278,
             chr(1) => 278,
             chr(2) => 278,
@@ -286,7 +286,7 @@ class Horde_Pdf_Font_Helveticai
             chr(253) => 500,
             chr(254) => 556,
             chr(255) => 500,
-        ));
+        ]];
     }
 
 }

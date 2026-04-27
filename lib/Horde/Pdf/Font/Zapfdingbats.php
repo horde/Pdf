@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Horde_Pdf package
  *
@@ -15,10 +16,9 @@
  */
 class Horde_Pdf_Font_Zapfdingbats
 {
-
     public function getWidths()
     {
-        return array('zapfdingbats' => array(
+        return ['zapfdingbats' => [
             chr(0) => 0,
             chr(1) => 0,
             chr(2) => 0,
@@ -286,7 +286,7 @@ class Horde_Pdf_Font_Zapfdingbats
             chr(253) => 970,
             chr(254) => 918,
             chr(255) => 0,
-        ));
+        ]];
     }
 
 }

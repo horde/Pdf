@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Horde_Pdf package
  *
@@ -14,6 +15,4 @@
  * @category Horde
  * @package  Pdf
  */
-class Horde_Pdf_Exception extends Horde_Exception_Wrapped
-{
-}
+class Horde_Pdf_Exception extends Horde_Exception_Wrapped {}
