@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Horde_Pdf package
  *
@@ -15,10 +16,9 @@
  */
 class Horde_Pdf_Font_Timesi
 {
-
     public function getWidths()
     {
-        return array('timesI' => array(
+        return ['timesI' => [
             chr(0) => 250,
             chr(1) => 250,
             chr(2) => 250,
@@ -286,7 +286,7 @@ class Horde_Pdf_Font_Timesi
             chr(253) => 444,
             chr(254) => 500,
             chr(255) => 444,
-        ));
+        ]];
     }
 
 }

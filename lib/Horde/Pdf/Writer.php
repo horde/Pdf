@@ -1,12 +1,13 @@
 <?php
+
 /**
  * Based on the FPDF class by Olivier Plathey (http://www.fpdf.org/).
  *
  * Minimal conversion to PHP 5 by Maintainable Software
  * (http://maintainable.com).
  *
- * Copyright 2001-2003 Olivier Plathey <olivier@fpdf.org>
- * Copyright 2003-2017 Horde LLC (http://www.horde.org/)
+ * Copyright 2001-2026 Olivier Plathey <olivier@fpdf.org>
+ * Copyright 2003-2026 Horde LLC (http://www.horde.org/)
  *
  * @author   Olivier Plathey <olivier@fpdf.org>
  * @author   Marko Djukic <marko@oblo.com>
@@ -44,7 +45,7 @@ class Horde_Pdf_Writer
      *
      * @var array
      */
-    protected $_offsets = array();
+    protected $_offsets = [];
 
     /**
      * Buffer holding in-memory Pdf.
@@ -72,7 +73,7 @@ class Horde_Pdf_Writer
      *
      * @var array
      */
-    protected $_pages = array();
+    protected $_pages = [];
 
     /**
      * Current document state.<pre>
@@ -112,7 +113,7 @@ class Horde_Pdf_Writer
      *
      * @var array
      */
-    protected $_orientation_changes = array();
+    protected $_orientation_changes = [];
 
     /**
      * Current width of page format in points.
@@ -249,55 +250,55 @@ class Horde_Pdf_Writer
      *
      * @var array
      */
-    protected $_core_fonts = array('courier'      => 'Courier',
-                                   'courierB'     => 'Courier-Bold',
-                                   'courierI'     => 'Courier-Oblique',
-                                   'courierBI'    => 'Courier-BoldOblique',
-                                   'helvetica'    => 'Helvetica',
-                                   'helveticaB'   => 'Helvetica-Bold',
-                                   'helveticaI'   => 'Helvetica-Oblique',
-                                   'helveticaBI'  => 'Helvetica-BoldOblique',
-                                   'times'        => 'Times-Roman',
-                                   'timesB'       => 'Times-Bold',
-                                   'timesI'       => 'Times-Italic',
-                                   'timesBI'      => 'Times-BoldItalic',
-                                   'symbol'       => 'Symbol',
-                                   'zapfdingbats' => 'ZapfDingbats');
+    protected $_core_fonts = ['courier'      => 'Courier',
+        'courierB'     => 'Courier-Bold',
+        'courierI'     => 'Courier-Oblique',
+        'courierBI'    => 'Courier-BoldOblique',
+        'helvetica'    => 'Helvetica',
+        'helveticaB'   => 'Helvetica-Bold',
+        'helveticaI'   => 'Helvetica-Oblique',
+        'helveticaBI'  => 'Helvetica-BoldOblique',
+        'times'        => 'Times-Roman',
+        'timesB'       => 'Times-Bold',
+        'timesI'       => 'Times-Italic',
+        'timesBI'      => 'Times-BoldItalic',
+        'symbol'       => 'Symbol',
+        'zapfdingbats' => 'ZapfDingbats'];
 
     /**
      * An array of used fonts.
      *
      * @var array
      */
-    protected $_fonts = array();
+    protected $_fonts = [];
 
     /**
      * An array of font files.
      *
      * @var array
      */
-    protected $_font_files = array();
+    protected $_font_files = [];
 
     /**
      * Widths of specific font files
      *
      * @var array
      */
-    protected static $_font_widths = array();
+    protected static $_font_widths = [];
 
     /**
      * An array of encoding differences.
      *
      * @var array
      */
-    protected $_diffs = array();
+    protected $_diffs = [];
 
     /**
      * An array of used images.
      *
      * @var array
      */
-    protected $_images = array();
+    protected $_images = [];
 
     /**
      * An array of links in pages.
@@ -311,7 +312,7 @@ class Horde_Pdf_Writer
      *
      * @var array
      */
-    protected $_links = array();
+    protected $_links = [];
 
     /**
      * Current font family.
@@ -435,7 +436,7 @@ class Horde_Pdf_Writer
      *
      * @var array
      */
-    protected $_info = array();
+    protected $_info = [];
 
     /**
      * Alias for total number of pages.
@@ -486,10 +487,10 @@ class Horde_Pdf_Writer
      *                         (expressed in the unit given by the unit
      *                         parameter).
      */
-    public function __construct($params = array())
+    public function __construct($params = [])
     {
         /* Default parameters. */
-        $defaults = array('orientation' => 'P', 'unit' => 'mm', 'format' => 'A4');
+        $defaults = ['orientation' => 'P', 'unit' => 'mm', 'format' => 'A4'];
         $params = array_merge($defaults, $params);
 
         /* Scale factor. */
@@ -508,15 +509,15 @@ class Horde_Pdf_Writer
         if (is_string($params['format'])) {
             $params['format'] = Horde_String::lower($params['format']);
             if ($params['format'] == 'a3') {
-                $params['format'] = array(841.89, 1190.55);
+                $params['format'] = [841.89, 1190.55];
             } elseif ($params['format'] == 'a4') {
-                $params['format'] = array(595.28, 841.89);
+                $params['format'] = [595.28, 841.89];
             } elseif ($params['format'] == 'a5') {
-                $params['format'] = array(420.94, 595.28);
+                $params['format'] = [420.94, 595.28];
             } elseif ($params['format'] == 'letter') {
-                $params['format'] = array(612, 792);
+                $params['format'] = [612, 792];
             } elseif ($params['format'] == 'legal') {
-                $params['format'] = array(612, 1008);
+                $params['format'] = [612, 1008];
             } else {
                 throw new Horde_Pdf_Exception(sprintf('Unknown page format: %s', $params['format']));
             }
@@ -1044,7 +1045,7 @@ class Horde_Pdf_Writer
         // convert hex to rgb
         if ($cs == 'hex') {
             $cs = 'rgb';
-            list($c1, $c2, $c3) = $this->_hexToRgb($c1);
+            [$c1, $c2, $c3] = $this->_hexToRgb($c1);
         }
 
         if ($cs == 'rgb') {
@@ -1102,7 +1103,7 @@ class Horde_Pdf_Writer
         // convert hex to rgb
         if ($cs == 'hex') {
             $cs = 'rgb';
-            list($c1, $c2, $c3) = $this->_hexToRgb($c1);
+            [$c1, $c2, $c3] = $this->_hexToRgb($c1);
         }
 
         if ($cs == 'rgb') {
@@ -1158,7 +1159,7 @@ class Horde_Pdf_Writer
         // convert hex to rgb
         if ($cs == 'hex') {
             $cs = 'rgb';
-            list($c1, $c2, $c3) = $this->_hexToRgb($c1);
+            [$c1, $c2, $c3] = $this->_hexToRgb($c1);
         }
 
         if ($cs == 'rgb') {
@@ -1194,7 +1195,7 @@ class Horde_Pdf_Writer
      */
     public function getStringWidth($text, $pt = false)
     {
-        $text = (string)$text;
+        $text = (string) $text;
         $width = 0;
         $length = strlen($text);
         for ($i = 0; $i < $length; $i++) {
@@ -1392,35 +1393,55 @@ class Horde_Pdf_Writer
         $c = sprintf('%.2F %.2F m', $x - $r, $y);
         $x = $x - $r;
         /* First circle quarter. */
-        $c .= sprintf(' %.2F %.2F %.2F %.2F %.2F %.2F c',
-                      $x, $y + $b,           // First control point.
-                      $x + $r - $b, $y + $r, // Second control point.
-                      $x + $r, $y + $r);     // Final point.
+        $c .= sprintf(
+            ' %.2F %.2F %.2F %.2F %.2F %.2F c',
+            $x,
+            $y + $b,           // First control point.
+            $x + $r - $b,
+            $y + $r, // Second control point.
+            $x + $r,
+            $y + $r
+        );     // Final point.
         /* Set x/y to the final point. */
         $x = $x + $r;
         $y = $y + $r;
         /* Second circle quarter. */
-        $c .= sprintf(' %.2F %.2F %.2F %.2F %.2F %.2F c',
-                      $x + $b, $y,
-                      $x + $r, $y - $r + $b,
-                      $x + $r, $y - $r);
+        $c .= sprintf(
+            ' %.2F %.2F %.2F %.2F %.2F %.2F c',
+            $x + $b,
+            $y,
+            $x + $r,
+            $y - $r + $b,
+            $x + $r,
+            $y - $r
+        );
         /* Set x/y to the final point. */
         $x = $x + $r;
         $y = $y - $r;
         /* Third circle quarter. */
-        $c .= sprintf(' %.2F %.2F %.2F %.2F %.2F %.2F c',
-                      $x, $y - $b,
-                      $x - $r + $b, $y - $r,
-                      $x - $r, $y - $r);
+        $c .= sprintf(
+            ' %.2F %.2F %.2F %.2F %.2F %.2F c',
+            $x,
+            $y - $b,
+            $x - $r + $b,
+            $y - $r,
+            $x - $r,
+            $y - $r
+        );
         /* Set x/y to the final point. */
         $x = $x - $r;
         $y = $y - $r;
         /* Fourth circle quarter. */
-        $c .= sprintf(' %.2F %.2F %.2F %.2F %.2F %.2F c %s',
-                      $x - $b, $y,
-                      $x - $r, $y + $r - $b,
-                      $x - $r, $y + $r,
-                      $op);
+        $c .= sprintf(
+            ' %.2F %.2F %.2F %.2F %.2F %.2F c %s',
+            $x - $b,
+            $y,
+            $x - $r,
+            $y + $r - $b,
+            $x - $r,
+            $y + $r,
+            $op
+        );
         /* Output the whole string. */
         $this->_out($c);
     }
@@ -1477,7 +1498,7 @@ class Horde_Pdf_Writer
             throw new Horde_Pdf_Exception('Could not include font definition file');
         }
         $i = count($this->_fonts) + 1;
-        $this->_fonts[$family . $style] = array('i' => $i, 'type' => $type, 'name' => $name, 'desc' => $desc, 'up' => $up, 'ut' => $ut, 'cw' => $cw, 'enc' => $enc, 'file' => $file);
+        $this->_fonts[$family . $style] = ['i' => $i, 'type' => $type, 'name' => $name, 'desc' => $desc, 'up' => $up, 'ut' => $ut, 'cw' => $cw, 'enc' => $enc, 'file' => $file];
         if ($diff) {
             /* Search existing encodings. */
             $d = 0;
@@ -1496,9 +1517,9 @@ class Horde_Pdf_Writer
         }
         if ($file) {
             if ($type == 'TrueType') {
-                $this->_font_files[$file] = array('length1' => $originalsize);
+                $this->_font_files[$file] = ['length1' => $originalsize];
             } else {
-                $this->_font_files[$file] = array('length1' => $size1, 'length2' => $size2);
+                $this->_font_files[$file] = ['length1' => $size1, 'length2' => $size2];
             }
         }
     }
@@ -1587,8 +1608,8 @@ class Horde_Pdf_Writer
         /* If font requested is already the current font and no force setting
          * of the font is requested (eg. when adding a new page) don't bother
          * with the rest of the function and simply return. */
-        if ($this->_font_family == $family && $this->_font_style == $style &&
-            $this->_font_size_pt == $size && !$force) {
+        if ($this->_font_family == $family && $this->_font_style == $style
+            && $this->_font_size_pt == $size && !$force) {
             return;
         }
 
@@ -1601,13 +1622,13 @@ class Horde_Pdf_Writer
             $font_widths = self::_getFontFile($fontkey);
 
             $i = count($this->_fonts) + 1;
-            $this->_fonts[$fontkey] = array(
+            $this->_fonts[$fontkey] = [
                 'i'    => $i,
                 'type' => 'core',
                 'name' => $this->_core_fonts[$fontkey],
                 'up'   => -100,
                 'ut'   => 50,
-                'cw'   => $font_widths[$fontkey]);
+                'cw'   => $font_widths[$fontkey]];
         }
 
         /* Store font information as current font. */
@@ -1678,7 +1699,7 @@ class Horde_Pdf_Writer
     public function addLink()
     {
         $n = count($this->_links) + 1;
-        $this->_links[$n] = array(0, 0);
+        $this->_links[$n] = [0, 0];
         return $n;
     }
 
@@ -1702,7 +1723,7 @@ class Horde_Pdf_Writer
         if ($page == -1) {
             $page = $this->_page;
         }
-        $this->_links[$link] = array($page, $y);
+        $this->_links[$link] = [$page, $y];
     }
 
     /**
@@ -1862,12 +1883,19 @@ class Horde_Pdf_Writer
      * @see write()
      * @see setAutoPageBreak()
      */
-    public function cell($width, $height = 0, $text = '', $border = 0, $ln = 0,
-                  $align = '', $fill = 0, $link = '')
-    {
+    public function cell(
+        $width,
+        $height = 0,
+        $text = '',
+        $border = 0,
+        $ln = 0,
+        $align = '',
+        $fill = 0,
+        $link = ''
+    ) {
         $k = $this->_scale;
-        if ($this->y + $height > $this->_page_break_trigger &&
-            !$this->_in_footer && $this->acceptPageBreak()) {
+        if ($this->y + $height > $this->_page_break_trigger
+            && !$this->_in_footer && $this->acceptPageBreak()) {
             $x = $this->x;
             $ws = $this->_word_spacing;
             if ($ws > 0) {
@@ -1931,7 +1959,7 @@ class Horde_Pdf_Writer
                 $s .= ' Q';
             }
             if ($link) {
-                $this->link($this->x + $dx, $this->y + .5 * $height- .5 * $this->_font_size, $this->getStringWidth($text), $this->_font_size, $link);
+                $this->link($this->x + $dx, $this->y + .5 * $height - .5 * $this->_font_size, $this->getStringWidth($text), $this->_font_size, $link);
             }
         }
         if ($s) {
@@ -1989,17 +2017,22 @@ class Horde_Pdf_Writer
      * @see write()
      * @see setAutoPageBreak()
      */
-    public function multiCell($width, $height, $text, $border = 0, $align = 'J',
-                       $fill = 0)
-    {
+    public function multiCell(
+        $width,
+        $height,
+        $text,
+        $border = 0,
+        $align = 'J',
+        $fill = 0
+    ) {
         $cw = $this->_current_font['cw'];
         if ($width == 0) {
             $width = $this->w - $this->_right_margin - $this->x;
         }
-        $wmax = ($width-2 * $this->_cell_margin) * 1000 / $this->_font_size;
+        $wmax = ($width - 2 * $this->_cell_margin) * 1000 / $this->_font_size;
         $s = str_replace("\r", '', $text);
         $nb = strlen($s);
-        if ($nb > 0 && $s[$nb-1] == "\n") {
+        if ($nb > 0 && $s[$nb - 1] == "\n") {
             $nb--;
         }
         $b = 0;
@@ -2034,7 +2067,7 @@ class Horde_Pdf_Writer
                     $this->_word_spacing = 0;
                     $this->_out('0 Tw');
                 }
-                $this->cell($width, $height, substr($s, $j, $i-$j), $b, 2, $align, $fill);
+                $this->cell($width, $height, substr($s, $j, $i - $j), $b, 2, $align, $fill);
                 $i++;
                 $sep = -1;
                 $j = $i;
@@ -2065,7 +2098,7 @@ class Horde_Pdf_Writer
                     $this->cell($width, $height, substr($s, $j, $i - $j), $b, 2, $align, $fill);
                 } else {
                     if ($align == 'J') {
-                        $this->_word_spacing = ($ns>1) ? ($wmax - $ls)/1000 * $this->_font_size / ($ns - 1) : 0;
+                        $this->_word_spacing = ($ns > 1) ? ($wmax - $ls) / 1000 * $this->_font_size / ($ns - 1) : 0;
                         $this->_out(sprintf('%.3F Tw', $this->_word_spacing * $this->_scale));
                     }
                     $this->cell($width, $height, substr($s, $j, $sep - $j), $b, 2, $align, $fill);
@@ -2158,7 +2191,7 @@ class Horde_Pdf_Writer
                 $sep = $i;
                 $ls = $l;
             }
-            $l += (isset($cw[$c]) ? $cw[$c] : 0);
+            $l += ($cw[$c] ?? 0);
             if ($l > $wmax) {
                 // Automatic line break.
                 if ($sep == -1) {
@@ -2234,9 +2267,16 @@ class Horde_Pdf_Writer
         $font_dx = cos($font_angle);
         $font_dy = sin($font_angle);
 
-        $s= sprintf('BT %.2F %.2F %.2F %.2F %.2F %.2F Tm (%s) Tj ET',
-                    $text_dx, $text_dy, $font_dx, $font_dy,
-                    $x * $this->_scale, ($this->h-$y) * $this->_scale, $text);
+        $s = sprintf(
+            'BT %.2F %.2F %.2F %.2F %.2F %.2F Tm (%s) Tj ET',
+            $text_dx,
+            $text_dy,
+            $font_dx,
+            $font_dy,
+            $x * $this->_scale,
+            ($this->h - $y) * $this->_scale,
+            $text
+        );
 
         if ($this->_draw_color) {
             $s = 'q ' . $this->_draw_color . ' ' . $s . ' Q';
@@ -2293,9 +2333,15 @@ class Horde_Pdf_Writer
      *
      * @see addLink()
      */
-    public function image($file, $x, $y, $width = 0, $height = 0, $type = '',
-                   $link = '')
-    {
+    public function image(
+        $file,
+        $x,
+        $y,
+        $width = 0,
+        $height = 0,
+        $type = '',
+        $link = ''
+    ) {
         if ($x < 0) {
             $x += $this->w;
         }
@@ -2314,7 +2360,9 @@ class Horde_Pdf_Writer
             }
 
             $mqr = function_exists("get_magic_quotes_runtime") ? @get_magic_quotes_runtime() : 0;
-            if ($mqr) { set_magic_quotes_runtime(0); }
+            if ($mqr) {
+                set_magic_quotes_runtime(0);
+            }
 
             $type = Horde_String::lower($type);
             if ($type == 'jpg' || $type == 'jpeg') {
@@ -2325,7 +2373,9 @@ class Horde_Pdf_Writer
                 throw new Horde_Pdf_Exception(sprintf('Unsupported image file type: %s', $type));
             }
 
-            if ($mqr) { set_magic_quotes_runtime($mqr); }
+            if ($mqr) {
+                set_magic_quotes_runtime($mqr);
+            }
 
             $info['i'] = count($this->_images) + 1;
             $this->_images[$file] = $info;
@@ -2579,7 +2629,7 @@ class Horde_Pdf_Writer
                 throw new Horde_Pdf_Exception(sprintf('Could not include font metric class: %s', $fontClass));
             }
 
-            $font = new $fontClass;
+            $font = new $fontClass();
 
             self::$_font_widths = array_merge(self::$_font_widths, $font->getWidths());
             if (!isset(self::$_font_widths[$fontkey])) {
@@ -2602,7 +2652,7 @@ class Horde_Pdf_Writer
      */
     protected function _link($x, $y, $width, $height, $link)
     {
-        $this->_page_links[$this->_page][] = array($x, $y, $width, $height, $link);
+        $this->_page_links[$this->_page][] = [$x, $y, $width, $height, $link];
     }
 
     /**
@@ -2706,7 +2756,9 @@ class Horde_Pdf_Writer
         }
 
         $mqr = function_exists("get_magic_quotes_runtime") ? @get_magic_quotes_runtime() : 0;
-        if ($mqr) { set_magic_quotes_runtime(0); }
+        if ($mqr) {
+            set_magic_quotes_runtime(0);
+        }
 
         foreach ($this->_font_files as $file => $info) {
             // Font file embedding.
@@ -2731,7 +2783,9 @@ class Horde_Pdf_Writer
             $this->_out('endobj');
         }
 
-        if ($mqr) { set_magic_quotes_runtime($mqr); }
+        if ($mqr) {
+            set_magic_quotes_runtime($mqr);
+        }
 
         foreach ($this->_fonts as $k => $font) {
             // Font objects
@@ -2805,7 +2859,7 @@ class Horde_Pdf_Writer
             $this->_out('/Width ' . $info['w']);
             $this->_out('/Height ' . $info['h']);
             if ($info['cs'] == 'Indexed') {
-                $this->_out('/ColorSpace [/Indexed /DeviceRGB ' . (strlen($info['pal'])/3 - 1) . ' ' . ($this->_n + 1) . ' 0 R]');
+                $this->_out('/ColorSpace [/Indexed /DeviceRGB ' . (strlen($info['pal']) / 3 - 1) . ' ' . ($this->_n + 1) . ' 0 R]');
             } else {
                 $this->_out('/ColorSpace /' . $info['cs']);
                 if ($info['cs'] == 'DeviceCMYK') {
@@ -3089,14 +3143,14 @@ class Horde_Pdf_Writer
         } else {
             $colspace = 'DeviceGray';
         }
-        $bpc = isset($img['bits']) ? $img['bits'] : 8;
+        $bpc = $img['bits'] ?? 8;
 
         // Read whole file.
         $f = fopen($file, 'rb');
         $data = fread($f, filesize($file));
         fclose($f);
 
-        return array('w' => $img[0], 'h' => $img[1], 'cs' => $colspace, 'bpc' => $bpc, 'f' => 'DCTDecode', 'data' => $data);
+        return ['w' => $img[0], 'h' => $img[1], 'cs' => $colspace, 'bpc' => $bpc, 'f' => 'DCTDecode', 'data' => $data];
     }
 
     /**
@@ -3165,13 +3219,13 @@ class Horde_Pdf_Writer
                 // Read transparency info
                 $t = fread($f, $n);
                 if ($ct == 0) {
-                    $trns = array(ord(substr($t, 1, 1)));
+                    $trns = [ord(substr($t, 1, 1))];
                 } elseif ($ct == 2) {
-                    $trns = array(ord(substr($t, 1, 1)), ord(substr($t, 3, 1)), ord(substr($t, 5, 1)));
+                    $trns = [ord(substr($t, 1, 1)), ord(substr($t, 3, 1)), ord(substr($t, 5, 1))];
                 } else {
                     $pos = strpos($t, chr(0));
                     if (is_int($pos)) {
-                        $trns = array($pos);
+                        $trns = [$pos];
                     }
                 }
                 fread($f, 4);
@@ -3191,7 +3245,7 @@ class Horde_Pdf_Writer
         }
         fclose($f);
 
-        return array('w' => $width, 'h' => $height, 'cs' => $colspace, 'bpc' => $bpc, 'f' => 'FlateDecode', 'parms' => $parms, 'pal' => $pal, 'trns' => $trns, 'data' => $data);
+        return ['w' => $width, 'h' => $height, 'cs' => $colspace, 'bpc' => $bpc, 'f' => 'FlateDecode', 'parms' => $parms, 'pal' => $pal, 'trns' => $trns, 'data' => $data];
     }
 
     /**
@@ -3229,9 +3283,11 @@ class Horde_Pdf_Writer
      */
     protected function _escape($s)
     {
-        return str_replace(array('\\', ')', '('),
-                           array('\\\\', '\\)', '\\('),
-                           $s);
+        return str_replace(
+            ['\\', ')', '('],
+            ['\\\\', '\\)', '\\('],
+            $s
+        );
     }
 
     /**
@@ -3267,21 +3323,23 @@ class Horde_Pdf_Writer
      */
     protected function _hexToRgb($hex)
     {
-        if (substr($hex, 0, 1) == '#') { $hex = substr($hex, 1); }
+        if (substr($hex, 0, 1) == '#') {
+            $hex = substr($hex, 1);
+        }
 
         if (strlen($hex) == 6) {
-            list($r, $g, $b) = array(substr($hex, 0, 2),
-                                     substr($hex, 2, 2),
-                                     substr($hex, 4, 2));
+            [$r, $g, $b] = [substr($hex, 0, 2),
+                substr($hex, 2, 2),
+                substr($hex, 4, 2)];
         } elseif (strlen($hex) == 3) {
-            list($r, $g, $b) = array(substr($hex, 0, 1).substr($hex, 0, 1),
-                                     substr($hex, 1, 1).substr($hex, 1, 1),
-                                     substr($hex, 2, 1).substr($hex, 2, 1));
+            [$r, $g, $b] = [substr($hex, 0, 1) . substr($hex, 0, 1),
+                substr($hex, 1, 1) . substr($hex, 1, 1),
+                substr($hex, 2, 1) . substr($hex, 2, 1)];
         }
-        $r = hexdec($r)/255;
-        $g = hexdec($g)/255;
-        $b = hexdec($b)/255;
+        $r = hexdec($r) / 255;
+        $g = hexdec($g) / 255;
+        $b = hexdec($b) / 255;
 
-        return array($r, $g, $b);
+        return [$r, $g, $b];
     }
 }

@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Horde_Pdf package
  *
@@ -15,10 +16,9 @@
  */
 class Horde_Pdf_Font_Symbol
 {
-
     public function getWidths()
     {
-        return array('symbol' => array(
+        return ['symbol' => [
             chr(0) => 250,
             chr(1) => 250,
             chr(2) => 250,
@@ -286,7 +286,7 @@ class Horde_Pdf_Font_Symbol
             chr(253) => 494,
             chr(254) => 494,
             chr(255) => 0,
-        ));
+        ]];
     }
 
 }
