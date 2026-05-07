@@ -324,7 +324,7 @@ final class PdfSerializer
                 );
             } elseif ($target instanceof GoToAction) {
                 $dest = $target->destination;
-                $pageObjNum = $objectMap->contains($dest->page)
+                $pageObjNum = $objectMap->offsetExists($dest->page)
                     ? $objectMap[$dest->page]
                     : 0;
                 $s .= sprintf(
