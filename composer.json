@@ -6,6 +6,11 @@
     "license": "LGPL-2.1-only",
     "authors": [
         {
+            "name": "Ralf Lang",
+            "email": "ralf.lang@ralf-lang.de",
+            "role": "lead"
+        },
+        {
             "name": "Jan Schneider",
             "email": "jan@horde.org",
             "role": "lead"
@@ -21,16 +26,19 @@
             "role": "lead"
         }
     ],
-    "time": "2026-04-26",
+    "keywords": [
+        "iso32000"
+    ],
+    "time": "2026-05-12",
     "repositories": [],
     "require": {
         "php": "^8.1",
-        "horde/exception": "^3",
-        "horde/util": "^3"
+        "horde/exception": "^3 || dev-FRAMEWORK_6_0",
+        "horde/util": "^3 || dev-FRAMEWORK_6_0"
     },
     "require-dev": {},
     "suggest": {
-        "horde/test": "^3"
+        "horde/test": "^3 || dev-FRAMEWORK_6_0"
     },
     "autoload": {
         "psr-0": {
@@ -47,5 +55,10 @@
     },
     "config": {
         "allow-plugins": {}
+    },
+    "extra": {
+        "branch-alias": {
+            "dev-FRAMEWORK_6_0": "3.x-dev"
+        }
     }
 }
