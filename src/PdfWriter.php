@@ -408,6 +408,18 @@ final class PdfWriter
         $this->setFont($this->fontFamily, $style);
     }
 
+    public function setTrueTypeFont(Type0Font $font, float $size): void
+    {
+        $this->currentFont = $font;
+        $this->fontSizePt = $size;
+        $this->fontSize = $size / $this->scaleFactor;
+
+        if ($this->pageNumber > 0) {
+            $localName = $this->registerFont($font);
+            $this->out(sprintf('BT /%s %.2F Tf ET', $localName, $this->fontSizePt));
+        }
+    }
+
     // --- Color ---
 
     public function setFillColor(Color $color): void
@@ -569,17 +581,17 @@ final class PdfWriter
 
         $k = $this->scaleFactor;
         $localName = $this->registerFont($this->currentFont);
-        $escaped = self::escapeString($text);
+        $textString = $this->encodePdfString($text);
         $textX = $x * $k;
         $textY = ($this->h - $y) * $k;
 
         $s = sprintf(
-            'BT /%s %.2F Tf %.2F %.2F Td (%s) Tj ET',
+            'BT /%s %.2F Tf %.2F %.2F Td %s Tj ET',
             $localName,
             $this->fontSizePt,
             $textX,
             $textY,
-            $escaped,
+            $textString,
         );
 
         if ($this->colorFlag) {
@@ -685,16 +697,16 @@ final class PdfWriter
             }
 
             $localName = $this->registerFont($this->currentFont);
-            $escaped = self::escapeString($text);
+            $textString = $this->encodePdfString($text);
             $textX = ($this->x + $dx) * $k;
             $textY = ($this->h - ($this->y + 0.5 * $height + 0.3 * $this->fontSize)) * $k;
             $s .= sprintf(
-                'BT /%s %.2F Tf %.2F %.2F Td (%s) Tj ET',
+                'BT /%s %.2F Tf %.2F %.2F Td %s Tj ET',
                 $localName,
                 $this->fontSizePt,
                 $textX,
                 $textY,
-                $escaped,
+                $textString,
             );
 
             if ($this->underline) {
@@ -1168,6 +1180,15 @@ final class PdfWriter
             ['\\\\', '\\(', '\\)'],
             $s,
         );
+    }
+
+    private function encodePdfString(string $text): string
+    {
+        if ($this->currentFont instanceof Type0Font || $this->currentFont instanceof CidFont) {
+            $encoded = $this->currentFont->encode($text);
+            return '<' . strtoupper(bin2hex($encoded)) . '>';
+        }
+        return '(' . self::escapeString($text) . ')';
     }
 
     private function doUnderline(float $x, float $y, string $text): string

@@ -52,6 +52,18 @@ final class PdfSerializer
                 if (!isset($allFonts[$key])) {
                     $objectNumber++;
                     $allFonts[$key] = ['font' => $font, 'objNum' => $objectNumber];
+                    if ($font->requiresEmbedding()) {
+                        $objectNumber++;
+                        $allFonts[$key]['cidFontObjNum'] = $objectNumber;
+                        $objectNumber++;
+                        $allFonts[$key]['fontDescriptorObjNum'] = $objectNumber;
+                        $objectNumber++;
+                        $allFonts[$key]['fontFileObjNum'] = $objectNumber;
+                        $objectNumber++;
+                        $allFonts[$key]['toUnicodeObjNum'] = $objectNumber;
+                        $objectNumber++;
+                        $allFonts[$key]['cidToGidObjNum'] = $objectNumber;
+                    }
                 }
                 $pageFontNums[$localName] = $allFonts[$key]['objNum'];
             }
@@ -139,16 +151,21 @@ final class PdfSerializer
             $font = $entry['font'];
             $objNum = $entry['objNum'];
             $offsets[$objNum] = strlen($buffer);
-            $buffer .= $objNum . " 0 obj\n";
-            $buffer .= "<</Type /Font\n";
-            $buffer .= "/Subtype /Type1\n";
-            $buffer .= "/BaseFont /" . $font->pdfName() . "\n";
-            $encoding = $font->encoding();
-            if ($encoding === FontEncoding::WinAnsi) {
-                $buffer .= "/Encoding /WinAnsiEncoding\n";
+
+            if ($font instanceof Type0Font) {
+                $this->serializeType0Font($buffer, $offsets, $entry);
+            } else {
+                $buffer .= $objNum . " 0 obj\n";
+                $buffer .= "<</Type /Font\n";
+                $buffer .= "/Subtype /Type1\n";
+                $buffer .= "/BaseFont /" . $font->pdfName() . "\n";
+                $encoding = $font->encoding();
+                if ($encoding === FontEncoding::WinAnsi) {
+                    $buffer .= "/Encoding /WinAnsiEncoding\n";
+                }
+                $buffer .= ">>\n";
+                $buffer .= "endobj\n";
             }
-            $buffer .= ">>\n";
-            $buffer .= "endobj\n";
         }
 
         foreach ($allImages as $entry) {
@@ -377,6 +394,127 @@ final class PdfSerializer
         } elseif ($layout === LayoutMode::Two) {
             $buffer .= "/PageLayout /TwoColumnLeft\n";
         }
+    }
+
+    /**
+     * @param array<string, mixed> $entry
+     * @param array<int, int> $offsets
+     */
+    private function serializeType0Font(string &$buffer, array &$offsets, array $entry): void
+    {
+        $font = $entry['font'];
+        $cidFont = $font->descendant();
+        $objNum = $entry['objNum'];
+        $cidFontObjNum = $entry['cidFontObjNum'];
+        $fontDescriptorObjNum = $entry['fontDescriptorObjNum'];
+        $fontFileObjNum = $entry['fontFileObjNum'];
+        $toUnicodeObjNum = $entry['toUnicodeObjNum'];
+        $cidToGidObjNum = $entry['cidToGidObjNum'];
+
+        // Type0 font dictionary
+        $buffer .= $objNum . " 0 obj\n";
+        $buffer .= "<</Type /Font\n";
+        $buffer .= "/Subtype /Type0\n";
+        $buffer .= "/BaseFont /" . $font->pdfName() . "\n";
+        $buffer .= "/Encoding /Identity-H\n";
+        $buffer .= "/DescendantFonts [" . $cidFontObjNum . " 0 R]\n";
+        $buffer .= "/ToUnicode " . $toUnicodeObjNum . " 0 R\n";
+        $buffer .= ">>\n";
+        $buffer .= "endobj\n";
+
+        // CIDFont dictionary
+        $offsets[$cidFontObjNum] = strlen($buffer);
+        $buffer .= $cidFontObjNum . " 0 obj\n";
+        $buffer .= "<</Type /Font\n";
+        $buffer .= "/Subtype /CIDFontType2\n";
+        $buffer .= "/BaseFont /" . $font->pdfName() . "\n";
+        $buffer .= "/CIDSystemInfo <</Registry (Adobe) /Ordering (Identity) /Supplement 0>>\n";
+        $buffer .= "/FontDescriptor " . $fontDescriptorObjNum . " 0 R\n";
+        $buffer .= "/CIDToGIDMap " . $cidToGidObjNum . " 0 R\n";
+
+        $dw = (int) round($cidFont->defaultWidth() * 1000 / $cidFont->fontData()->unitsPerEm);
+        $buffer .= "/DW " . $dw . "\n";
+
+        $widths = $cidFont->cidWidths();
+        if (!empty($widths)) {
+            $buffer .= "/W [";
+            foreach ($widths as [$cid, $width]) {
+                $buffer .= $cid . " [" . $width . "] ";
+            }
+            $buffer .= "]\n";
+        }
+
+        $buffer .= ">>\n";
+        $buffer .= "endobj\n";
+
+        // FontDescriptor
+        $metrics = $cidFont->fontDescriptorMetrics();
+        $offsets[$fontDescriptorObjNum] = strlen($buffer);
+        $buffer .= $fontDescriptorObjNum . " 0 obj\n";
+        $buffer .= "<</Type /FontDescriptor\n";
+        $buffer .= "/FontName /" . $font->pdfName() . "\n";
+        $buffer .= "/Flags " . $metrics['flags'] . "\n";
+        $buffer .= sprintf("/FontBBox [%d %d %d %d]\n", ...$metrics['bbox']);
+        $buffer .= "/ItalicAngle " . $metrics['italicAngle'] . "\n";
+        $buffer .= "/Ascent " . $metrics['ascent'] . "\n";
+        $buffer .= "/Descent " . $metrics['descent'] . "\n";
+        $buffer .= "/CapHeight " . $metrics['capHeight'] . "\n";
+        $buffer .= "/StemV " . $metrics['stemV'] . "\n";
+        $buffer .= "/FontFile2 " . $fontFileObjNum . " 0 R\n";
+        $buffer .= ">>\n";
+        $buffer .= "endobj\n";
+
+        // FontFile2 (embedded subset)
+        $fontProgram = $cidFont->subsetFontProgram();
+        $fontStreamData = $this->compress ? @gzcompress($fontProgram) : false;
+        $useFontCompression = $fontStreamData !== false && $this->compress;
+        if (!$useFontCompression) {
+            $fontStreamData = $fontProgram;
+        }
+
+        $offsets[$fontFileObjNum] = strlen($buffer);
+        $buffer .= $fontFileObjNum . " 0 obj\n";
+        $fontFilter = $useFontCompression ? '/Filter /FlateDecode ' : '';
+        $buffer .= '<<' . $fontFilter . '/Length ' . strlen($fontStreamData)
+            . ' /Length1 ' . strlen($fontProgram) . ">>\n";
+        $buffer .= "stream\n";
+        $buffer .= $fontStreamData . "\n";
+        $buffer .= "endstream\n";
+        $buffer .= "endobj\n";
+
+        // ToUnicode CMap
+        $toUnicodeData = $cidFont->toUnicodeCMap();
+        $toUnicodeStream = $this->compress ? @gzcompress($toUnicodeData) : false;
+        $useToUnicodeCompression = $toUnicodeStream !== false && $this->compress;
+        if (!$useToUnicodeCompression) {
+            $toUnicodeStream = $toUnicodeData;
+        }
+
+        $offsets[$toUnicodeObjNum] = strlen($buffer);
+        $buffer .= $toUnicodeObjNum . " 0 obj\n";
+        $toUnicodeFilter = $useToUnicodeCompression ? '/Filter /FlateDecode ' : '';
+        $buffer .= '<<' . $toUnicodeFilter . '/Length ' . strlen($toUnicodeStream) . ">>\n";
+        $buffer .= "stream\n";
+        $buffer .= $toUnicodeStream . "\n";
+        $buffer .= "endstream\n";
+        $buffer .= "endobj\n";
+
+        // CIDToGIDMap
+        $cidToGidData = $cidFont->cidToGidMapData();
+        $cidToGidStream = $this->compress ? @gzcompress($cidToGidData) : false;
+        $useCidToGidCompression = $cidToGidStream !== false && $this->compress;
+        if (!$useCidToGidCompression) {
+            $cidToGidStream = $cidToGidData;
+        }
+
+        $offsets[$cidToGidObjNum] = strlen($buffer);
+        $buffer .= $cidToGidObjNum . " 0 obj\n";
+        $cidToGidFilter = $useCidToGidCompression ? '/Filter /FlateDecode ' : '';
+        $buffer .= '<<' . $cidToGidFilter . '/Length ' . strlen($cidToGidStream) . ">>\n";
+        $buffer .= "stream\n";
+        $buffer .= $cidToGidStream . "\n";
+        $buffer .= "endstream\n";
+        $buffer .= "endobj\n";
     }
 
     private static function escapeString(string $s): string
