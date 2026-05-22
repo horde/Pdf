@@ -10,4 +10,5 @@ enum FontEncoding: string
     case MacRoman = 'MacRomanEncoding';
     case Symbol = 'Symbol';
     case ZapfDingbats = 'ZapfDingbats';
+    case IdentityH = 'Identity-H';
 }
