@@ -305,6 +305,21 @@ final class PdfWriter
         return $this->h - $this->topMargin - $this->breakMargin;
     }
 
+    public function getDefaultOrientation(): Orientation
+    {
+        return $this->defaultOrientation;
+    }
+
+    public function getFormatWidth(): float
+    {
+        return $this->fwPt / $this->scaleFactor;
+    }
+
+    public function getFormatHeight(): float
+    {
+        return $this->fhPt / $this->scaleFactor;
+    }
+
     // --- Cursor ---
 
     public function getX(): float
@@ -388,6 +403,11 @@ final class PdfWriter
         return $this->currentFont->widthOfString($text, $this->fontSizePt) / $this->scaleFactor;
     }
 
+    public function setFontStyle(string $style): void
+    {
+        $this->setFont($this->fontFamily, $style);
+    }
+
     // --- Color ---
 
     public function setFillColor(Color $color): void
@@ -400,10 +420,20 @@ final class PdfWriter
         }
     }
 
+    public function getFillColor(): Color
+    {
+        return $this->fillColor;
+    }
+
     public function setTextColor(Color $color): void
     {
         $this->textColor = $color;
         $this->colorFlag = ($this->fillColor->toPdfFillString() !== $this->textColor->toPdfFillString());
+    }
+
+    public function getTextColor(): Color
+    {
+        return $this->textColor;
     }
 
     public function setDrawColor(Color $color): void
@@ -413,6 +443,11 @@ final class PdfWriter
         if ($this->pageNumber > 0) {
             $this->out($color->toPdfStrokeString());
         }
+    }
+
+    public function getDrawColor(): Color
+    {
+        return $this->drawColor;
     }
 
     // --- Drawing ---
