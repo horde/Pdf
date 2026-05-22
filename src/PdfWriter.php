@@ -412,6 +412,75 @@ final class PdfWriter
         }
     }
 
+    public function line(float $x1, float $y1, float $x2, float $y2): void
+    {
+        $k = $this->scaleFactor;
+        $this->out(sprintf(
+            '%.2F %.2F m %.2F %.2F l S',
+            $x1 * $k,
+            ($this->h - $y1) * $k,
+            $x2 * $k,
+            ($this->h - $y2) * $k,
+        ));
+    }
+
+    public function rect(float $x, float $y, float $width, float $height, ShapeStyle $style = ShapeStyle::Draw): void
+    {
+        $k = $this->scaleFactor;
+        $this->out(sprintf(
+            '%.2F %.2F %.2F %.2F re %s',
+            $x * $k,
+            ($this->h - $y) * $k,
+            $width * $k,
+            -$height * $k,
+            $style->pdfOperator(),
+        ));
+    }
+
+    public function circle(float $x, float $y, float $r, ShapeStyle $style = ShapeStyle::Draw): void
+    {
+        $k = $this->scaleFactor;
+        $xc = $x * $k;
+        $yc = ($this->h - $y) * $k;
+        $rr = $r * $k;
+        $b = $rr * 0.5522847498;
+
+        $this->out(sprintf(
+            '%.2F %.2F m'
+            . ' %.2F %.2F %.2F %.2F %.2F %.2F c'
+            . ' %.2F %.2F %.2F %.2F %.2F %.2F c'
+            . ' %.2F %.2F %.2F %.2F %.2F %.2F c'
+            . ' %.2F %.2F %.2F %.2F %.2F %.2F c %s',
+            $xc - $rr,
+            $yc,
+            $xc - $rr,
+            $yc + $b,
+            $xc - $b,
+            $yc + $rr,
+            $xc,
+            $yc + $rr,
+            $xc + $b,
+            $yc + $rr,
+            $xc + $rr,
+            $yc + $b,
+            $xc + $rr,
+            $yc,
+            $xc + $rr,
+            $yc - $b,
+            $xc + $b,
+            $yc - $rr,
+            $xc,
+            $yc - $rr,
+            $xc - $b,
+            $yc - $rr,
+            $xc - $rr,
+            $yc - $b,
+            $xc - $rr,
+            $yc,
+            $style->pdfOperator(),
+        ));
+    }
+
     // --- Text output ---
 
     public function cell(
