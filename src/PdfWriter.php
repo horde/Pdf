@@ -87,6 +87,14 @@ final class PdfWriter
     /** @var array<string, ImageXObject> */
     private array $imageCache = [];
 
+    private int $linkIdCounter = 0;
+
+    /** @var array<int, array{page: int, y: float}> Internal link destinations keyed by link ID */
+    private array $internalLinks = [];
+
+    /** @var array<int, array<int, array{x: float, y: float, w: float, h: float, target: int|string}>> Annotations per page */
+    private array $pageLinks = [];
+
     public function __construct(
         private readonly WriterOptions $options = new WriterOptions(),
         ?HeaderFooterHandler $headerFooter = null,
@@ -212,6 +220,9 @@ final class PdfWriter
         $totalPages = $this->pageNumber;
         $catalog = new DocumentCatalog();
 
+        /** @var array<int, Page> */
+        $pageObjects = [];
+
         for ($p = 1; $p <= $totalPages; $p++) {
             $operators = str_replace(
                 $this->aliasNbPages,
@@ -232,8 +243,11 @@ final class PdfWriter
             $mediaBox = $this->mediaBoxForOrientation($orientation);
             $page = new Page($mediaBox);
             $page->addContentStream($cs);
+            $pageObjects[$p] = $page;
             $catalog->addPage($page);
         }
+
+        $this->resolveLinks($pageObjects);
 
         if ($this->documentInfo !== null) {
             $catalog->setInfo($this->documentInfo);
@@ -479,6 +493,35 @@ final class PdfWriter
             $yc,
             $style->pdfOperator(),
         ));
+    }
+
+    // --- Links ---
+
+    public function addLink(): int
+    {
+        $this->linkIdCounter++;
+        $this->internalLinks[$this->linkIdCounter] = ['page' => 0, 'y' => 0.0];
+
+        return $this->linkIdCounter;
+    }
+
+    public function setLink(int $id, float $y = 0, int $page = -1): void
+    {
+        if ($page === -1) {
+            $page = $this->pageNumber;
+        }
+        $this->internalLinks[$id] = ['page' => $page, 'y' => $y];
+    }
+
+    public function link(float $x, float $y, float $w, float $h, int|string $target): void
+    {
+        $this->pageLinks[$this->pageNumber][] = [
+            'x' => $x,
+            'y' => $y,
+            'w' => $w,
+            'h' => $h,
+            'target' => $target,
+        ];
     }
 
     // --- Text output ---
@@ -1073,5 +1116,44 @@ final class PdfWriter
             $w,
             -($ut * $this->fontSizePt / 1000.0),
         );
+    }
+
+    /**
+     * @param array<int, Page> $pageObjects
+     */
+    private function resolveLinks(array $pageObjects): void
+    {
+        foreach ($this->pageLinks as $p => $links) {
+            if (!isset($pageObjects[$p])) {
+                continue;
+            }
+            $page = $pageObjects[$p];
+            $k = $this->scaleFactor;
+            $hPt = $page->mediaBox->height();
+
+            foreach ($links as $link) {
+                $rect = new Rectangle(
+                    $link['x'] * $k,
+                    $hPt - $link['y'] * $k,
+                    ($link['x'] + $link['w']) * $k,
+                    $hPt - ($link['y'] + $link['h']) * $k,
+                );
+
+                if (is_string($link['target'])) {
+                    $annot = new LinkAnnotation($rect, new UriAction($link['target']));
+                } else {
+                    $dest = $this->internalLinks[$link['target']] ?? null;
+                    if ($dest === null || $dest['page'] === 0 || !isset($pageObjects[$dest['page']])) {
+                        continue;
+                    }
+                    $targetPage = $pageObjects[$dest['page']];
+                    $targetHPt = $targetPage->mediaBox->height();
+                    $destination = new Destination($targetPage, top: $targetHPt - $dest['y'] * $k);
+                    $annot = new LinkAnnotation($rect, $destination);
+                }
+
+                $page->addAnnotation($annot);
+            }
+        }
     }
 }
