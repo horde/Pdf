@@ -526,6 +526,38 @@ final class PdfWriter
 
     // --- Text output ---
 
+    public function text(float $x, float $y, string $text): void
+    {
+        if ($this->currentFont === null) {
+            throw new PdfException('No font set');
+        }
+
+        $k = $this->scaleFactor;
+        $localName = $this->registerFont($this->currentFont);
+        $escaped = self::escapeString($text);
+        $textX = $x * $k;
+        $textY = ($this->h - $y) * $k;
+
+        $s = sprintf(
+            'BT /%s %.2F Tf %.2F %.2F Td (%s) Tj ET',
+            $localName,
+            $this->fontSizePt,
+            $textX,
+            $textY,
+            $escaped,
+        );
+
+        if ($this->colorFlag) {
+            $s = 'q ' . $this->textColor->toPdfFillString() . ' ' . $s . ' Q';
+        }
+
+        if ($this->underline) {
+            $s .= ' ' . $this->doUnderline($textX, $textY, $text);
+        }
+
+        $this->out($s);
+    }
+
     public function cell(
         float $width,
         float $height = 0,
