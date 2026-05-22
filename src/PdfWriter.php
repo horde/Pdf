@@ -95,10 +95,17 @@ final class PdfWriter
     /** @var array<int, array<int, array{x: float, y: float, w: float, h: float, target: int|string}>> Annotations per page */
     private array $pageLinks = [];
 
+    /** @var array<string, array<int, true>> PostScript name → set of codepoints */
+    private array $deferredFontChars = [];
+
+    /** @var array<string, DeferredFont> PostScript name → DeferredFont instance */
+    private array $deferredFonts = [];
+
     public function __construct(
         private readonly WriterOptions $options = new WriterOptions(),
         ?HeaderFooterHandler $headerFooter = null,
         bool $compress = true,
+        private readonly ?FontResolver $fontResolver = null,
     ) {
         $this->headerFooter = $headerFooter;
         $this->compress = $compress;
@@ -216,6 +223,8 @@ final class PdfWriter
         if ($this->state !== DocumentState::Closed) {
             $this->close();
         }
+
+        $this->resolveDeferredFonts();
 
         $totalPages = $this->pageNumber;
         $catalog = new DocumentCatalog();
@@ -357,20 +366,48 @@ final class PdfWriter
 
     // --- Font ---
 
-    public function setFont(string $family, string $style = '', ?float $size = null): void
+    public function setFont(string $family, string|FontStyle $style = '', ?float $size = null): void
     {
         if ($family === '') {
             $family = $this->fontFamily;
         }
 
-        [$coreFont, $underline] = CoreFont::fromFamilyStyle($family, $style);
-        $this->currentFont = $coreFont->toFont();
-        $this->fontFamily = $coreFont->family();
-        $this->fontStyle = strtoupper(str_replace('U', '', $style));
-        if ($this->fontStyle === 'IB') {
-            $this->fontStyle = 'BI';
+        $underline = false;
+
+        if ($style instanceof FontStyle) {
+            $fontStyle = $style;
+            $styleStr = $style->value;
+        } else {
+            $styleStr = strtoupper($style);
+            $underline = str_contains($styleStr, 'U');
+            $styleStr = str_replace('U', '', $styleStr);
+            if ($styleStr === 'IB') {
+                $styleStr = 'BI';
+            }
+            $fontStyle = FontStyle::tryFrom($styleStr) ?? FontStyle::Regular;
         }
-        $this->underline = $underline;
+
+        if ($this->fontResolver !== null) {
+            $resolved = $this->fontResolver->resolve($family, $fontStyle);
+            $this->currentFont = $resolved;
+            $this->fontFamily = strtolower(trim($family));
+            $this->fontStyle = $styleStr;
+            $this->underline = $underline;
+
+            if ($resolved instanceof DeferredFont) {
+                $psName = $resolved->pdfName();
+                if (!isset($this->deferredFonts[$psName])) {
+                    $this->deferredFonts[$psName] = $resolved;
+                    $this->deferredFontChars[$psName] = [];
+                }
+            }
+        } else {
+            [$coreFont, $underline] = CoreFont::fromFamilyStyle($family, $styleStr);
+            $this->currentFont = $coreFont->toFont();
+            $this->fontFamily = $coreFont->family();
+            $this->fontStyle = $styleStr;
+            $this->underline = $underline;
+        }
 
         if ($size !== null && $size > 0) {
             $this->fontSizePt = $size;
@@ -579,6 +616,8 @@ final class PdfWriter
             throw new PdfException('No font set');
         }
 
+        $this->trackDeferredCodepoints($text);
+
         $k = $this->scaleFactor;
         $localName = $this->registerFont($this->currentFont);
         $textString = $this->encodePdfString($text);
@@ -685,6 +724,8 @@ final class PdfWriter
             if ($this->currentFont === null) {
                 throw new PdfException('No font set');
             }
+
+            $this->trackDeferredCodepoints($text);
 
             $dx = match ($align) {
                 TextAlign::Right => $width - $this->cellMargin - $this->getStringWidth($text),
@@ -1184,11 +1225,55 @@ final class PdfWriter
 
     private function encodePdfString(string $text): string
     {
-        if ($this->currentFont instanceof Type0Font || $this->currentFont instanceof CidFont) {
+        if ($this->currentFont instanceof Type0Font
+            || $this->currentFont instanceof CidFont
+            || $this->currentFont instanceof DeferredFont
+        ) {
             $encoded = $this->currentFont->encode($text);
             return '<' . strtoupper(bin2hex($encoded)) . '>';
         }
         return '(' . self::escapeString($text) . ')';
+    }
+
+    private function trackDeferredCodepoints(string $text): void
+    {
+        if (!($this->currentFont instanceof DeferredFont)) {
+            return;
+        }
+
+        $psName = $this->currentFont->pdfName();
+        $chars = mb_str_split($text, 1, 'UTF-8');
+        foreach ($chars as $char) {
+            $cp = mb_ord($char, 'UTF-8');
+            $this->deferredFontChars[$psName][$cp] = true;
+        }
+    }
+
+    private function resolveDeferredFonts(): void
+    {
+        if (empty($this->deferredFonts)) {
+            return;
+        }
+
+        $resolved = [];
+        foreach ($this->deferredFonts as $psName => $deferred) {
+            $codepoints = array_keys($this->deferredFontChars[$psName] ?? []);
+            if (empty($codepoints)) {
+                continue;
+            }
+            $resolved[$psName] = new Type0Font($deferred->fontData(), $codepoints);
+        }
+
+        for ($p = 1; $p <= $this->pageNumber; $p++) {
+            foreach ($this->fontMaps[$p] as $localName => $font) {
+                if ($font instanceof DeferredFont) {
+                    $psName = $font->pdfName();
+                    if (isset($resolved[$psName])) {
+                        $this->fontMaps[$p][$localName] = $resolved[$psName];
+                    }
+                }
+            }
+        }
     }
 
     private function doUnderline(float $x, float $y, string $text): string
