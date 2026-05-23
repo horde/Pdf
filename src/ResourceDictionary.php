@@ -12,6 +12,9 @@ final class ResourceDictionary
     /** @var array<string, ImageXObject> */
     private array $images = [];
 
+    /** @var array<string, ExtGState> */
+    private array $extGraphicsStates = [];
+
     public function addFont(string $name, Font $font): void
     {
         $this->fonts[$name] = $font;
@@ -20,6 +23,11 @@ final class ResourceDictionary
     public function addImage(string $name, ImageXObject $image): void
     {
         $this->images[$name] = $image;
+    }
+
+    public function addExtGState(string $name, ExtGState $gs): void
+    {
+        $this->extGraphicsStates[$name] = $gs;
     }
 
     /**
@@ -38,6 +46,14 @@ final class ResourceDictionary
         return $this->images;
     }
 
+    /**
+     * @return array<string, ExtGState>
+     */
+    public function extGraphicsStates(): array
+    {
+        return $this->extGraphicsStates;
+    }
+
     public function merge(self $other): void
     {
         foreach ($other->fonts as $name => $font) {
@@ -51,10 +67,16 @@ final class ResourceDictionary
                 $this->images[$name] = $image;
             }
         }
+
+        foreach ($other->extGraphicsStates as $name => $gs) {
+            if (!isset($this->extGraphicsStates[$name])) {
+                $this->extGraphicsStates[$name] = $gs;
+            }
+        }
     }
 
     public function isEmpty(): bool
     {
-        return empty($this->fonts) && empty($this->images);
+        return empty($this->fonts) && empty($this->images) && empty($this->extGraphicsStates);
     }
 }

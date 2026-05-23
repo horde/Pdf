@@ -76,6 +76,15 @@ final class PdfWriter
     /** @var array<int, Orientation> */
     private array $pageOrientations = [];
 
+    /** @var array<int, int> ExtGState counter per page */
+    private array $gsCounters = [];
+
+    /** @var array<int, array<string, string>> key → local name per page */
+    private array $gsKeyMaps = [];
+
+    /** @var array<int, array<string, ExtGState>> localName → ExtGState per page */
+    private array $gsMaps = [];
+
     private bool $inFooter = false;
     private ?HeaderFooterHandler $headerFooter;
     private string $aliasNbPages = '{nb}';
@@ -200,6 +209,9 @@ final class PdfWriter
         $this->imageCounters[$this->pageNumber] = 0;
         $this->imageNameMaps[$this->pageNumber] = [];
         $this->imageMaps[$this->pageNumber] = [];
+        $this->gsCounters[$this->pageNumber] = 0;
+        $this->gsKeyMaps[$this->pageNumber] = [];
+        $this->gsMaps[$this->pageNumber] = [];
         $this->state = DocumentState::PageOpen;
 
         $this->x = $this->leftMargin;
@@ -245,6 +257,9 @@ final class PdfWriter
             }
             foreach ($this->imageMaps[$p] as $localName => $image) {
                 $resources->addImage($localName, $image);
+            }
+            foreach ($this->gsMaps[$p] as $localName => $gs) {
+                $resources->addExtGState($localName, $gs);
             }
 
             $cs = new ContentStream($operators, $resources);
@@ -577,6 +592,47 @@ final class PdfWriter
             $yc,
             $style->pdfOperator(),
         ));
+    }
+
+    // --- Graphics state ---
+
+    public function setAlpha(float $fillAlpha, ?float $strokeAlpha = null): void
+    {
+        $gs = ExtGState::alpha($fillAlpha, $strokeAlpha);
+        $localName = $this->registerExtGState($gs);
+        $this->out('/' . $localName . ' gs');
+    }
+
+    public function setBlendMode(BlendMode $mode): void
+    {
+        $gs = ExtGState::blendMode($mode);
+        $localName = $this->registerExtGState($gs);
+        $this->out('/' . $localName . ' gs');
+    }
+
+    public function writeRotated(float $x, float $y, string $text, float $angleDeg): void
+    {
+        if ($this->currentFont === null) {
+            throw new PdfException('No font set');
+        }
+
+        $this->trackDeferredCodepoints($text);
+
+        $k = $this->scaleFactor;
+        $localName = $this->registerFont($this->currentFont);
+        $textString = $this->encodePdfString($text);
+
+        $transform = AffineTransform::translate($x * $k, ($this->h - $y) * $k)
+            ->multiply(AffineTransform::rotate($angleDeg));
+
+        $s = 'q ' . $transform->toPdfOperator();
+        $s .= sprintf(' BT /%s %.2F Tf 0 0 Td %s Tj ET Q', $localName, $this->fontSizePt, $textString);
+
+        if ($this->colorFlag) {
+            $s = 'q ' . $this->textColor->toPdfFillString() . ' ' . $s . ' Q';
+        }
+
+        $this->out($s);
     }
 
     // --- Links ---
@@ -1156,6 +1212,23 @@ final class PdfWriter
         $localName = 'I' . $this->imageCounters[$p];
         $this->imageNameMaps[$p][$id] = $localName;
         $this->imageMaps[$p][$localName] = $image;
+
+        return $localName;
+    }
+
+    private function registerExtGState(ExtGState $gs): string
+    {
+        $p = $this->pageNumber;
+        $key = $gs->key();
+
+        if (isset($this->gsKeyMaps[$p][$key])) {
+            return $this->gsKeyMaps[$p][$key];
+        }
+
+        $this->gsCounters[$p]++;
+        $localName = 'GS' . $this->gsCounters[$p];
+        $this->gsKeyMaps[$p][$key] = $localName;
+        $this->gsMaps[$p][$localName] = $gs;
 
         return $localName;
     }

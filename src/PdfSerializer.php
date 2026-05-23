@@ -39,10 +39,12 @@ final class PdfSerializer
 
         $allFonts = [];
         $allImages = [];
+        $allExtGStates = [];
         $fontObjNums = [];
         $imageObjNums = [];
         $pageResourceFontObjNums = [];
         $pageResourceImageObjNums = [];
+        $pageResourceGStateObjNums = [];
 
         foreach ($pages as $i => $page) {
             $res = $page->resourceDictionary();
@@ -83,6 +85,17 @@ final class PdfSerializer
                 $pageImageNums[$localName] = $allImages[$key]['objNum'];
             }
             $pageResourceImageObjNums[$i] = $pageImageNums;
+
+            $pageGStateNums = [];
+            foreach ($res->extGraphicsStates() as $localName => $gs) {
+                $key = $gs->key();
+                if (!isset($allExtGStates[$key])) {
+                    $objectNumber++;
+                    $allExtGStates[$key] = ['gs' => $gs, 'objNum' => $objectNumber];
+                }
+                $pageGStateNums[$localName] = $allExtGStates[$key]['objNum'];
+            }
+            $pageResourceGStateObjNums[$i] = $pageGStateNums;
         }
 
         $resourceDictObjNums = [];
@@ -225,6 +238,29 @@ final class PdfSerializer
             }
         }
 
+        foreach ($allExtGStates as $entry) {
+            $gs = $entry['gs'];
+            $objNum = $entry['objNum'];
+            $offsets[$objNum] = strlen($buffer);
+            $buffer .= $objNum . " 0 obj\n";
+            $buffer .= "<</Type /ExtGState\n";
+            if ($gs->fillAlpha !== null) {
+                $buffer .= sprintf("/ca %.3F\n", $gs->fillAlpha);
+            }
+            if ($gs->strokeAlpha !== null) {
+                $buffer .= sprintf("/CA %.3F\n", $gs->strokeAlpha);
+            }
+            if ($gs->blendMode !== null) {
+                $buffer .= '/BM /' . $gs->blendMode->value . "\n";
+            }
+            if ($gs->overprint !== null) {
+                $buffer .= '/OP ' . ($gs->overprint ? 'true' : 'false') . "\n";
+                $buffer .= '/op ' . ($gs->overprint ? 'true' : 'false') . "\n";
+            }
+            $buffer .= ">>\n";
+            $buffer .= "endobj\n";
+        }
+
         foreach ($pages as $i => $page) {
             $offsets[$resourceDictObjNums[$i]] = strlen($buffer);
             $buffer .= $resourceDictObjNums[$i] . " 0 obj\n";
@@ -239,6 +275,13 @@ final class PdfSerializer
             if (!empty($pageResourceImageObjNums[$i])) {
                 $buffer .= "/XObject <<";
                 foreach ($pageResourceImageObjNums[$i] as $localName => $objNum) {
+                    $buffer .= " /" . $localName . " " . $objNum . " 0 R";
+                }
+                $buffer .= " >>\n";
+            }
+            if (!empty($pageResourceGStateObjNums[$i])) {
+                $buffer .= "/ExtGState <<";
+                foreach ($pageResourceGStateObjNums[$i] as $localName => $objNum) {
                     $buffer .= " /" . $localName . " " . $objNum . " 0 R";
                 }
                 $buffer .= " >>\n";
