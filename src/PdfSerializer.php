@@ -133,9 +133,34 @@ final class PdfSerializer
             $outputIntentObjNums[] = $objectNumber;
         }
 
+        $encryptObjNum = 0;
+        $encryption = $catalog->encryption();
+        if ($encryption !== null) {
+            $objectNumber++;
+            $encryptObjNum = $objectNumber;
+        }
+
         $totalObjects = $objectNumber;
 
-        $buffer .= $catalog->version->header() . "\n";
+        // Generate file ID and encryption handler
+        $fileId = md5(microtime(true) . random_bytes(16), true);
+        $encHandler = null;
+        if ($encryption !== null) {
+            $encHandler = EncryptionHandler::create($encryption, $fileId);
+        }
+
+        // Determine effective PDF version
+        $version = $catalog->version;
+        if ($encryption !== null) {
+            $minVersion = $encryption->algorithm === EncryptionAlgorithm::AES256
+                ? PdfVersion::V2_0
+                : PdfVersion::V1_6;
+            if ($minVersion->value > $version->value) {
+                $version = $minVersion;
+            }
+        }
+
+        $buffer .= $version->header() . "\n";
         $buffer .= "%\xE2\xE3\xCF\xD3\n";
 
         foreach ($pages as $i => $page) {
@@ -173,6 +198,10 @@ final class PdfSerializer
                 $streamData = $content;
             }
 
+            if ($encHandler !== null) {
+                $streamData = $encHandler->encryptStream($streamData, $streamObjNums[$i], 0);
+            }
+
             $offsets[$streamObjNums[$i]] = strlen($buffer);
             $buffer .= $streamObjNums[$i] . " 0 obj\n";
             $filter = $useCompression ? '/Filter /FlateDecode ' : '';
@@ -189,7 +218,7 @@ final class PdfSerializer
             $offsets[$objNum] = strlen($buffer);
 
             if ($font instanceof Type0Font) {
-                $this->serializeType0Font($buffer, $offsets, $entry);
+                $this->serializeType0Font($buffer, $offsets, $entry, $encHandler);
             } else {
                 $buffer .= $objNum . " 0 obj\n";
                 $buffer .= "<</Type /Font\n";
@@ -237,9 +266,13 @@ final class PdfSerializer
                 }
                 $buffer .= "/Mask [" . $trns . "]\n";
             }
-            $buffer .= "/Length " . strlen($image->data) . ">>\n";
+            $imageData = $image->data;
+            if ($encHandler !== null) {
+                $imageData = $encHandler->encryptStream($imageData, $objNum, 0);
+            }
+            $buffer .= "/Length " . strlen($imageData) . ">>\n";
             $buffer .= "stream\n";
-            $buffer .= $image->data . "\n";
+            $buffer .= $imageData . "\n";
             $buffer .= "endstream\n";
             $buffer .= "endobj\n";
 
@@ -251,6 +284,9 @@ final class PdfSerializer
                 $usePalCompression = $palData !== false && $this->compress;
                 if (!$usePalCompression) {
                     $palData = $image->palette;
+                }
+                if ($encHandler !== null) {
+                    $palData = $encHandler->encryptStream($palData, $paletteObjNum, 0);
                 }
                 $palFilter = $usePalCompression ? '/Filter /FlateDecode ' : '';
                 $buffer .= '<<' . $palFilter . '/Length ' . strlen($palData) . ">>\n";
@@ -328,26 +364,26 @@ final class PdfSerializer
         $offsets[$infoObjNum] = strlen($buffer);
         $buffer .= $infoObjNum . " 0 obj\n";
         $buffer .= "<<\n";
-        $buffer .= "/Producer " . self::textString('Horde PDF') . "\n";
+        $buffer .= "/Producer " . $this->encTextString('Horde PDF', $infoObjNum, $encHandler) . "\n";
         $info = $catalog->info();
         if ($info !== null) {
             if ($info->title !== null) {
-                $buffer .= "/Title " . self::textString($info->title) . "\n";
+                $buffer .= "/Title " . $this->encTextString($info->title, $infoObjNum, $encHandler) . "\n";
             }
             if ($info->author !== null) {
-                $buffer .= "/Author " . self::textString($info->author) . "\n";
+                $buffer .= "/Author " . $this->encTextString($info->author, $infoObjNum, $encHandler) . "\n";
             }
             if ($info->subject !== null) {
-                $buffer .= "/Subject " . self::textString($info->subject) . "\n";
+                $buffer .= "/Subject " . $this->encTextString($info->subject, $infoObjNum, $encHandler) . "\n";
             }
             if ($info->keywords !== null) {
-                $buffer .= "/Keywords " . self::textString($info->keywords) . "\n";
+                $buffer .= "/Keywords " . $this->encTextString($info->keywords, $infoObjNum, $encHandler) . "\n";
             }
             if ($info->creator !== null) {
-                $buffer .= "/Creator " . self::textString($info->creator) . "\n";
+                $buffer .= "/Creator " . $this->encTextString($info->creator, $infoObjNum, $encHandler) . "\n";
             }
             if ($info->creationDate !== null) {
-                $buffer .= "/CreationDate " . self::textString($info->creationDate) . "\n";
+                $buffer .= "/CreationDate " . $this->encTextString($info->creationDate, $infoObjNum, $encHandler) . "\n";
             }
         }
         $buffer .= ">>\n";
@@ -402,6 +438,30 @@ final class PdfSerializer
             $buffer .= "endobj\n";
         }
 
+        if ($encryptObjNum > 0 && $encHandler !== null) {
+            $offsets[$encryptObjNum] = strlen($buffer);
+            $buffer .= $encryptObjNum . " 0 obj\n";
+            $buffer .= "<</Filter /Standard\n";
+            if ($encryption->algorithm === EncryptionAlgorithm::AES128) {
+                $buffer .= "/V 4 /R 4 /Length 128\n";
+                $buffer .= "/CF <</StdCF <</AuthEvent /DocOpen /CFM /AESV2 /Length 16>>>>\n";
+            } else {
+                $buffer .= "/V 5 /R 6 /Length 256\n";
+                $buffer .= "/CF <</StdCF <</AuthEvent /DocOpen /CFM /AESV3 /Length 32>>>>\n";
+            }
+            $buffer .= "/StmF /StdCF /StrF /StdCF\n";
+            $buffer .= "/O <" . bin2hex($encHandler->ownerHash()) . ">\n";
+            $buffer .= "/U <" . bin2hex($encHandler->userHash()) . ">\n";
+            if ($encryption->algorithm === EncryptionAlgorithm::AES256) {
+                $buffer .= "/OE <" . bin2hex($encHandler->ownerEncKey()) . ">\n";
+                $buffer .= "/UE <" . bin2hex($encHandler->userEncKey()) . ">\n";
+                $buffer .= "/Perms <" . bin2hex($encHandler->permsEncrypted()) . ">\n";
+            }
+            $buffer .= "/P " . $encryption->permissionFlags() . "\n";
+            $buffer .= ">>\n";
+            $buffer .= "endobj\n";
+        }
+
         $xrefOffset = strlen($buffer);
         $buffer .= "xref\n";
         $buffer .= "0 " . ($totalObjects + 1) . "\n";
@@ -415,6 +475,10 @@ final class PdfSerializer
         $buffer .= "/Size " . ($totalObjects + 1) . "\n";
         $buffer .= "/Root " . $catalogObjNum . " 0 R\n";
         $buffer .= "/Info " . $infoObjNum . " 0 R\n";
+        if ($encryptObjNum > 0) {
+            $buffer .= "/Encrypt " . $encryptObjNum . " 0 R\n";
+            $buffer .= "/ID [<" . bin2hex($fileId) . "> <" . bin2hex($fileId) . ">]\n";
+        }
         $buffer .= ">>\n";
         $buffer .= "startxref\n";
         $buffer .= $xrefOffset . "\n";
@@ -506,7 +570,7 @@ final class PdfSerializer
     /**
      * @param array<string, mixed> $entry
      */
-    private function serializeType0Font(string &$buffer, array &$offsets, array $entry): void
+    private function serializeType0Font(string &$buffer, array &$offsets, array $entry, ?EncryptionHandler $encHandler): void
     {
         $font = $entry['font'];
         $cidFont = $font->descendant();
@@ -577,6 +641,9 @@ final class PdfSerializer
         if (!$useFontCompression) {
             $fontStreamData = $fontProgram;
         }
+        if ($encHandler !== null) {
+            $fontStreamData = $encHandler->encryptStream($fontStreamData, $fontFileObjNum, 0);
+        }
 
         $offsets[$fontFileObjNum] = strlen($buffer);
         $buffer .= $fontFileObjNum . " 0 obj\n";
@@ -595,6 +662,9 @@ final class PdfSerializer
         if (!$useToUnicodeCompression) {
             $toUnicodeStream = $toUnicodeData;
         }
+        if ($encHandler !== null) {
+            $toUnicodeStream = $encHandler->encryptStream($toUnicodeStream, $toUnicodeObjNum, 0);
+        }
 
         $offsets[$toUnicodeObjNum] = strlen($buffer);
         $buffer .= $toUnicodeObjNum . " 0 obj\n";
@@ -611,6 +681,9 @@ final class PdfSerializer
         $useCidToGidCompression = $cidToGidStream !== false && $this->compress;
         if (!$useCidToGidCompression) {
             $cidToGidStream = $cidToGidData;
+        }
+        if ($encHandler !== null) {
+            $cidToGidStream = $encHandler->encryptStream($cidToGidStream, $cidToGidObjNum, 0);
         }
 
         $offsets[$cidToGidObjNum] = strlen($buffer);
@@ -744,5 +817,14 @@ final class PdfSerializer
     private static function textString(string $s): string
     {
         return '(' . self::escapeString($s) . ')';
+    }
+
+    private function encTextString(string $s, int $objNum, ?EncryptionHandler $handler): string
+    {
+        if ($handler === null) {
+            return self::textString($s);
+        }
+        $encrypted = $handler->encryptString($s, $objNum, 0);
+        return '<' . bin2hex($encrypted) . '>';
     }
 }
