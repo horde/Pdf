@@ -116,7 +116,14 @@ final class PdfSerializer
                     $objectNumber++;
                     $allColorSpaces[$key] = ['cs' => $cs, 'objNum' => $objectNumber];
                     $objectNumber++;
-                    $allColorSpaces[$key]['streamObjNum'] = $objectNumber;
+                    $allColorSpaces[$key]['auxObjNum'] = $objectNumber;
+                    if ($cs instanceof IccBasedColorSpace) {
+                        $allColorSpaces[$key]['type'] = 'icc';
+                    } elseif ($cs instanceof SeparationColorSpace) {
+                        $allColorSpaces[$key]['type'] = 'separation';
+                    } elseif ($cs instanceof DeviceNColorSpace) {
+                        $allColorSpaces[$key]['type'] = 'devicen';
+                    }
                 }
                 $pageCSNums[$localName] = $allColorSpaces[$key]['objNum'];
             }
@@ -382,34 +389,51 @@ final class PdfSerializer
         foreach ($allColorSpaces as $entry) {
             $cs = $entry['cs'];
             $objNum = $entry['objNum'];
-            $streamObjNum = $entry['streamObjNum'];
-            $profile = $cs->profile;
+            $auxObjNum = $entry['auxObjNum'];
+            $type = $entry['type'];
 
             $offsets[$objNum] = strlen($buffer);
             $buffer .= $objNum . " 0 obj\n";
-            $buffer .= "[/ICCBased " . $streamObjNum . " 0 R]\n";
+
+            if ($type === 'icc') {
+                $buffer .= "[/ICCBased " . $auxObjNum . " 0 R]\n";
+            } elseif ($type === 'separation') {
+                $altName = $cs->alternateSpace->pdfName();
+                $buffer .= "[/Separation /" . $cs->colorantName . " /" . $altName . " " . $auxObjNum . " 0 R]\n";
+            } elseif ($type === 'devicen') {
+                $names = implode(' ', array_map(fn(string $n) => '/' . $n, $cs->colorantNames));
+                $altName = $cs->alternateSpace->pdfName();
+                $buffer .= "[/DeviceN [" . $names . "] /" . $altName . " " . $auxObjNum . " 0 R]\n";
+            }
+
             $buffer .= "endobj\n";
 
-            $streamData = $this->compress ? @gzcompress($profile->data) : false;
-            $useCompression = $streamData !== false && $this->compress;
-            if (!$useCompression) {
-                $streamData = $profile->data;
-            }
-            if ($encHandler !== null) {
-                $streamData = $encHandler->encryptStream($streamData, $streamObjNum, 0);
+            $offsets[$auxObjNum] = strlen($buffer);
+            $buffer .= $auxObjNum . " 0 obj\n";
+
+            if ($type === 'icc') {
+                $profile = $cs->profile;
+                $streamData = $this->compress ? @gzcompress($profile->data) : false;
+                $useCompression = $streamData !== false && $this->compress;
+                if (!$useCompression) {
+                    $streamData = $profile->data;
+                }
+                if ($encHandler !== null) {
+                    $streamData = $encHandler->encryptStream($streamData, $auxObjNum, 0);
+                }
+                $buffer .= "<</N " . $profile->componentCount . "\n";
+                $buffer .= "/Alternate /" . $profile->alternateSpace() . "\n";
+                if ($useCompression) {
+                    $buffer .= "/Filter /FlateDecode\n";
+                }
+                $buffer .= "/Length " . strlen($streamData) . ">>\n";
+                $buffer .= "stream\n";
+                $buffer .= $streamData . "\n";
+                $buffer .= "endstream\n";
+            } else {
+                $this->serializePdfFunction($buffer, $cs->tintTransform, $auxObjNum, $encHandler);
             }
 
-            $offsets[$streamObjNum] = strlen($buffer);
-            $buffer .= $streamObjNum . " 0 obj\n";
-            $buffer .= "<</N " . $profile->componentCount . "\n";
-            $buffer .= "/Alternate /" . $profile->alternateSpace() . "\n";
-            if ($useCompression) {
-                $buffer .= "/Filter /FlateDecode\n";
-            }
-            $buffer .= "/Length " . strlen($streamData) . ">>\n";
-            $buffer .= "stream\n";
-            $buffer .= $streamData . "\n";
-            $buffer .= "endstream\n";
             $buffer .= "endobj\n";
         }
 
@@ -721,6 +745,30 @@ final class PdfSerializer
      * @param array<string, mixed> $allExtGStates
      * @param array<int, bool> $visiting
      */
+    private function serializePdfFunction(string &$buffer, PdfFunction $fn, int $objNum, ?EncryptionHandler $encHandler): void
+    {
+        if ($fn instanceof ExponentialFunction) {
+            $buffer .= "<</FunctionType 2\n";
+            $buffer .= "/Domain [" . implode(' ', array_map(fn(float $v) => sprintf('%.1F', $v), $fn->domain())) . "]\n";
+            $buffer .= "/C0 [" . implode(' ', array_map(fn(float $v) => sprintf('%.4F', $v), $fn->c0)) . "]\n";
+            $buffer .= "/C1 [" . implode(' ', array_map(fn(float $v) => sprintf('%.4F', $v), $fn->c1)) . "]\n";
+            $buffer .= sprintf("/N %.1F>>\n", $fn->exponent);
+        } elseif ($fn instanceof PostScriptFunction) {
+            $code = '{ ' . $fn->code . ' }';
+            $streamData = $code;
+            if ($encHandler !== null) {
+                $streamData = $encHandler->encryptStream($streamData, $objNum, 0);
+            }
+            $buffer .= "<</FunctionType 4\n";
+            $buffer .= "/Domain [" . implode(' ', array_map(fn(float $v) => sprintf('%.1F', $v), $fn->domain())) . "]\n";
+            $buffer .= "/Range [" . implode(' ', array_map(fn(float $v) => sprintf('%.1F', $v), $fn->range())) . "]\n";
+            $buffer .= "/Length " . strlen($streamData) . ">>\n";
+            $buffer .= "stream\n";
+            $buffer .= $streamData . "\n";
+            $buffer .= "endstream\n";
+        }
+    }
+
     private function collectForm(
         FormXObject $form,
         array &$allForms,
@@ -808,7 +856,14 @@ final class PdfSerializer
                 $objectNumber++;
                 $allColorSpaces[$csKey] = ['cs' => $cs, 'objNum' => $objectNumber];
                 $objectNumber++;
-                $allColorSpaces[$csKey]['streamObjNum'] = $objectNumber;
+                $allColorSpaces[$csKey]['auxObjNum'] = $objectNumber;
+                if ($cs instanceof IccBasedColorSpace) {
+                    $allColorSpaces[$csKey]['type'] = 'icc';
+                } elseif ($cs instanceof SeparationColorSpace) {
+                    $allColorSpaces[$csKey]['type'] = 'separation';
+                } elseif ($cs instanceof DeviceNColorSpace) {
+                    $allColorSpaces[$csKey]['type'] = 'devicen';
+                }
             }
             $csObjNums[$localName] = $allColorSpaces[$csKey]['objNum'];
         }

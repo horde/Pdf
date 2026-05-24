@@ -18,7 +18,7 @@ final class ResourceDictionary
     /** @var array<string, FormXObject> */
     private array $forms = [];
 
-    /** @var array<string, IccBasedColorSpace> */
+    /** @var array<string, ColorSpace> */
     private array $colorSpaces = [];
 
     public function addFont(string $name, Font $font): void
@@ -41,7 +41,7 @@ final class ResourceDictionary
         $this->forms[$name] = $form;
     }
 
-    public function addColorSpace(string $name, IccBasedColorSpace $cs): void
+    public function addColorSpace(string $name, ColorSpace $cs): void
     {
         $this->colorSpaces[$name] = $cs;
     }
@@ -79,7 +79,7 @@ final class ResourceDictionary
     }
 
     /**
-     * @return array<string, IccBasedColorSpace>
+     * @return array<string, ColorSpace>
      */
     public function colorSpaces(): array
     {
