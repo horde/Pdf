@@ -10,6 +10,9 @@ final class DocumentCatalog
     private ?DocumentInfo $info = null;
     private ?ViewerPreferences $viewerPreferences = null;
     private ?OutlineTree $outlines = null;
+    private ?MetadataStream $metadata = null;
+    /** @var array<OutputIntent> */
+    private array $outputIntents = [];
 
     public function __construct(
         public readonly PdfVersion $version = PdfVersion::V1_7,
@@ -55,5 +58,28 @@ final class DocumentCatalog
     public function outlines(): ?OutlineTree
     {
         return $this->outlines;
+    }
+
+    public function setMetadata(MetadataStream $metadata): void
+    {
+        $this->metadata = $metadata;
+    }
+
+    public function metadata(): ?MetadataStream
+    {
+        return $this->metadata;
+    }
+
+    public function addOutputIntent(OutputIntent $intent): void
+    {
+        $this->outputIntents[] = $intent;
+    }
+
+    /**
+     * @return array<OutputIntent>
+     */
+    public function outputIntents(): array
+    {
+        return $this->outputIntents;
     }
 }

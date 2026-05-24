@@ -7,6 +7,7 @@ namespace Horde\Pdf;
 use Horde\Pdf\TrueType\FontParser;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
+use Throwable;
 
 final class TrueTypeFontProvider implements FontProvider
 {
@@ -82,7 +83,7 @@ final class TrueTypeFontProvider implements FontProvider
     {
         try {
             $fontData = FontParser::parseFile($path);
-        } catch (\Throwable) {
+        } catch (Throwable) {
             return;
         }
 
@@ -95,7 +96,7 @@ final class TrueTypeFontProvider implements FontProvider
         $this->index[$family][$style->value] = $path;
     }
 
-    private function detectStyle(\Horde\Pdf\TrueType\FontData $fontData): FontStyle
+    private function detectStyle(TrueType\FontData $fontData): FontStyle
     {
         $isBold = $fontData->usWeightClass >= 700;
         $isItalic = $fontData->italicAngle !== 0
