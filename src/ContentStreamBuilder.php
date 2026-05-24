@@ -208,6 +208,12 @@ final class ContentStreamBuilder
         return $this;
     }
 
+    public function setTextRenderingMode(TextRenderingMode $mode): self
+    {
+        $this->operators[] = sprintf('%d Tr', $mode->value);
+        return $this;
+    }
+
     // --- Images ---
 
     public function drawImage(
