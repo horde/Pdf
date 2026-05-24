@@ -35,7 +35,7 @@ final class ContentStreamBuilder
     /** @var array<int, string> spl_object_id → local name (X1, X2, ...) */
     private array $formNameIndex = [];
 
-    /** @var array<string, IccBasedColorSpace> */
+    /** @var array<string, ColorSpace> */
     private array $colorSpaceMap = [];
 
     private int $colorSpaceCounter = 0;
@@ -104,6 +104,34 @@ final class ContentStreamBuilder
     }
 
     public function setIccStrokeColor(IccColor $color): self
+    {
+        $localName = $this->registerColorSpace($color->colorSpace());
+        $this->operators[] = $color->toPdfStrokeString($localName);
+        return $this;
+    }
+
+    public function setSeparationFillColor(SeparationColor $color): self
+    {
+        $localName = $this->registerColorSpace($color->colorSpace());
+        $this->operators[] = $color->toPdfFillString($localName);
+        return $this;
+    }
+
+    public function setSeparationStrokeColor(SeparationColor $color): self
+    {
+        $localName = $this->registerColorSpace($color->colorSpace());
+        $this->operators[] = $color->toPdfStrokeString($localName);
+        return $this;
+    }
+
+    public function setDeviceNFillColor(DeviceNColor $color): self
+    {
+        $localName = $this->registerColorSpace($color->colorSpace());
+        $this->operators[] = $color->toPdfFillString($localName);
+        return $this;
+    }
+
+    public function setDeviceNStrokeColor(DeviceNColor $color): self
     {
         $localName = $this->registerColorSpace($color->colorSpace());
         $this->operators[] = $color->toPdfStrokeString($localName);
@@ -396,7 +424,7 @@ final class ContentStreamBuilder
         return $localName;
     }
 
-    private function registerColorSpace(IccBasedColorSpace $cs): string
+    private function registerColorSpace(ColorSpace $cs): string
     {
         $id = spl_object_id($cs);
 
