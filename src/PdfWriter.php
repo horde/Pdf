@@ -74,6 +74,15 @@ final class PdfWriter
     /** @var array<int, array<string, ImageXObject>> localName → ImageXObject per page */
     private array $imageMaps = [];
 
+    /** @var array<int, int> Form counter per page */
+    private array $formCounters = [];
+
+    /** @var array<int, array<int, string>> object_id → local name per page */
+    private array $formNameMaps = [];
+
+    /** @var array<int, array<string, FormXObject>> localName → FormXObject per page */
+    private array $formMaps = [];
+
     /** @var array<int, Orientation> */
     private array $pageOrientations = [];
 
@@ -222,6 +231,9 @@ final class PdfWriter
         $this->imageCounters[$this->pageNumber] = 0;
         $this->imageNameMaps[$this->pageNumber] = [];
         $this->imageMaps[$this->pageNumber] = [];
+        $this->formCounters[$this->pageNumber] = 0;
+        $this->formNameMaps[$this->pageNumber] = [];
+        $this->formMaps[$this->pageNumber] = [];
         $this->gsCounters[$this->pageNumber] = 0;
         $this->gsKeyMaps[$this->pageNumber] = [];
         $this->gsMaps[$this->pageNumber] = [];
@@ -271,6 +283,9 @@ final class PdfWriter
             }
             foreach ($this->imageMaps[$p] as $localName => $image) {
                 $resources->addImage($localName, $image);
+            }
+            foreach ($this->formMaps[$p] as $localName => $form) {
+                $resources->addForm($localName, $form);
             }
             foreach ($this->gsMaps[$p] as $localName => $gs) {
                 $resources->addExtGState($localName, $gs);
@@ -1147,6 +1162,46 @@ final class PdfWriter
         ));
     }
 
+    // --- Form XObjects ---
+
+    public function drawForm(
+        FormXObject $form,
+        float $x,
+        float $y,
+        ?float $width = null,
+        ?float $height = null,
+    ): void {
+        $k = $this->scaleFactor;
+        $localName = $this->registerForm($form);
+
+        $formWidth = $form->bbox->width();
+        $formHeight = $form->bbox->height();
+
+        $scaleX = $width !== null ? ($width * $k / $formWidth) : 1.0;
+        $scaleY = $height !== null ? ($height * $k / $formHeight) : 1.0;
+
+        if ($width === null && $height === null) {
+            $scaleX = 1.0;
+            $scaleY = 1.0;
+        } elseif ($width !== null && $height === null) {
+            $scaleY = $scaleX;
+        } elseif ($height !== null && $width === null) {
+            $scaleX = $scaleY;
+        }
+
+        $tx = $x * $k;
+        $ty = $this->hPt - ($y * $k) - ($formHeight * $scaleY);
+
+        $this->out(sprintf(
+            'q %.4F 0 0 %.4F %.4F %.4F cm /%s Do Q',
+            $scaleX,
+            $scaleY,
+            $tx,
+            $ty,
+            $localName,
+        ));
+    }
+
     // --- Bookmarks ---
 
     /** @var array<array{title: string, level: int, page: int, y: float}> */
@@ -1353,6 +1408,23 @@ final class PdfWriter
         $localName = 'GS' . $this->gsCounters[$p];
         $this->gsKeyMaps[$p][$key] = $localName;
         $this->gsMaps[$p][$localName] = $gs;
+
+        return $localName;
+    }
+
+    private function registerForm(FormXObject $form): string
+    {
+        $p = $this->pageNumber;
+        $id = spl_object_id($form);
+
+        if (isset($this->formNameMaps[$p][$id])) {
+            return $this->formNameMaps[$p][$id];
+        }
+
+        $this->formCounters[$p]++;
+        $localName = 'X' . $this->formCounters[$p];
+        $this->formNameMaps[$p][$id] = $localName;
+        $this->formMaps[$p][$localName] = $form;
 
         return $localName;
     }
