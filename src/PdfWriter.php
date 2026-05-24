@@ -46,6 +46,7 @@ final class PdfWriter
 
     private float $lineWidth;
     private float $wordSpacing = 0.0;
+    private TextRenderingMode $textRenderingMode = TextRenderingMode::Fill;
 
     private int $pageNumber = 0;
 
@@ -470,6 +471,15 @@ final class PdfWriter
     public function setFontStyle(string $style): void
     {
         $this->setFont($this->fontFamily, $style);
+    }
+
+    public function setTextRenderingMode(TextRenderingMode $mode): void
+    {
+        $this->textRenderingMode = $mode;
+
+        if ($this->pageNumber > 0) {
+            $this->out(sprintf('BT %d Tr ET', $mode->value));
+        }
     }
 
     public function setTrueTypeFont(Type0Font $font, float $size): void
