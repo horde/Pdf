@@ -18,6 +18,9 @@ final class ResourceDictionary
     /** @var array<string, FormXObject> */
     private array $forms = [];
 
+    /** @var array<string, IccBasedColorSpace> */
+    private array $colorSpaces = [];
+
     public function addFont(string $name, Font $font): void
     {
         $this->fonts[$name] = $font;
@@ -36,6 +39,11 @@ final class ResourceDictionary
     public function addForm(string $name, FormXObject $form): void
     {
         $this->forms[$name] = $form;
+    }
+
+    public function addColorSpace(string $name, IccBasedColorSpace $cs): void
+    {
+        $this->colorSpaces[$name] = $cs;
     }
 
     /**
@@ -70,6 +78,14 @@ final class ResourceDictionary
         return $this->forms;
     }
 
+    /**
+     * @return array<string, IccBasedColorSpace>
+     */
+    public function colorSpaces(): array
+    {
+        return $this->colorSpaces;
+    }
+
     public function merge(self $other): void
     {
         foreach ($other->fonts as $name => $font) {
@@ -95,10 +111,20 @@ final class ResourceDictionary
                 $this->forms[$name] = $form;
             }
         }
+
+        foreach ($other->colorSpaces as $name => $cs) {
+            if (!isset($this->colorSpaces[$name])) {
+                $this->colorSpaces[$name] = $cs;
+            }
+        }
     }
 
     public function isEmpty(): bool
     {
-        return empty($this->fonts) && empty($this->images) && empty($this->extGraphicsStates) && empty($this->forms);
+        return empty($this->fonts)
+            && empty($this->images)
+            && empty($this->extGraphicsStates)
+            && empty($this->forms)
+            && empty($this->colorSpaces);
     }
 }
