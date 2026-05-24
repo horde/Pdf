@@ -110,6 +110,18 @@ final class PdfWriter
     /** @var array<string, DeferredFont> PostScript name → DeferredFont instance */
     private array $deferredFonts = [];
 
+    /** @var array<int, int> Per-page MCID counter */
+    private array $mcidCounters = [];
+
+    /** @var array<int, StructureElement> Stack of open structure elements */
+    private array $structureStack = [];
+
+    private ?StructureTree $structureTree = null;
+    private ?StructureElement $documentElement = null;
+
+    /** @var array<int, array{element: StructureElement, mcid: int, pageNum: int}> */
+    private array $deferredMcidBindings = [];
+
     public function __construct(
         private readonly WriterOptions $options = new WriterOptions(),
         ?HeaderFooterHandler $headerFooter = null,
@@ -212,6 +224,7 @@ final class PdfWriter
         $this->gsCounters[$this->pageNumber] = 0;
         $this->gsKeyMaps[$this->pageNumber] = [];
         $this->gsMaps[$this->pageNumber] = [];
+        $this->mcidCounters[$this->pageNumber] = 0;
         $this->state = DocumentState::PageOpen;
 
         $this->x = $this->leftMargin;
@@ -290,6 +303,17 @@ final class PdfWriter
         }
         if ($this->encryption !== null) {
             $catalog->setEncryption($this->encryption);
+        }
+
+        if ($this->structureTree !== null) {
+            if (!empty($this->structureStack)) {
+                throw new PdfException('Unclosed structure elements at output time');
+            }
+            foreach ($this->deferredMcidBindings as $binding) {
+                $page = $pageObjects[$binding['pageNum']];
+                $binding['element']->addMarkedContent($binding['mcid'], $page);
+            }
+            $catalog->setStructureTree($this->structureTree);
         }
 
         return (new PdfSerializer(compress: $this->compress))->serialize($catalog);
@@ -1214,6 +1238,44 @@ final class PdfWriter
     public function setCompression(bool $compress): void
     {
         $this->compress = $compress;
+    }
+
+    // --- Structure / Tagged PDF ---
+
+    public function beginStructure(StructureType $type, ?string $altText = null, ?string $lang = null): void
+    {
+        if ($this->structureTree === null) {
+            $this->structureTree = new StructureTree();
+            $this->documentElement = new StructureElement(StructureType::Document);
+            $this->structureTree->add($this->documentElement);
+        }
+
+        $element = new StructureElement($type, altText: $altText, lang: $lang);
+
+        $parent = !empty($this->structureStack)
+            ? $this->structureStack[count($this->structureStack) - 1]
+            : $this->documentElement;
+        $parent->addChild($element);
+
+        $mcid = $this->mcidCounters[$this->pageNumber]++;
+        $this->deferredMcidBindings[] = [
+            'element' => $element,
+            'mcid' => $mcid,
+            'pageNum' => $this->pageNumber,
+        ];
+
+        $this->out(sprintf('/%s <</MCID %d>> BDC', $type->value, $mcid));
+        $this->structureStack[] = $element;
+    }
+
+    public function endStructure(): void
+    {
+        if (empty($this->structureStack)) {
+            throw new PdfException('endStructure called without matching beginStructure');
+        }
+
+        array_pop($this->structureStack);
+        $this->out('EMC');
     }
 
     // --- Private helpers ---

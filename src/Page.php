@@ -14,6 +14,8 @@ final class Page
     /** @var array<int, Annotation> */
     private array $annotations = [];
 
+    private ?int $structParents = null;
+
     public function __construct(
         public readonly Rectangle $mediaBox,
     ) {
@@ -50,5 +52,15 @@ final class Page
     public function annotations(): array
     {
         return $this->annotations;
+    }
+
+    public function setStructParents(int $value): void
+    {
+        $this->structParents = $value;
+    }
+
+    public function structParents(): ?int
+    {
+        return $this->structParents;
     }
 }

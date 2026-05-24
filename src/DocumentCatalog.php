@@ -14,6 +14,8 @@ final class DocumentCatalog
     /** @var array<OutputIntent> */
     private array $outputIntents = [];
     private ?EncryptionConfig $encryption = null;
+    private bool $marked = false;
+    private ?StructureTree $structureTree = null;
 
     public function __construct(
         public readonly PdfVersion $version = PdfVersion::V1_7,
@@ -92,5 +94,26 @@ final class DocumentCatalog
     public function encryption(): ?EncryptionConfig
     {
         return $this->encryption;
+    }
+
+    public function setMarked(bool $marked = true): void
+    {
+        $this->marked = $marked;
+    }
+
+    public function isMarked(): bool
+    {
+        return $this->marked;
+    }
+
+    public function setStructureTree(StructureTree $tree): void
+    {
+        $this->structureTree = $tree;
+        $this->marked = true;
+    }
+
+    public function structureTree(): ?StructureTree
+    {
+        return $this->structureTree;
     }
 }

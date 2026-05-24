@@ -11,6 +11,7 @@ final class ContentStreamBuilder
 
     private bool $inTextObject = false;
     private int $graphicsStateDepth = 0;
+    private int $markedContentDepth = 0;
 
     /** @var array<string, Font> */
     private array $fontMap = [];
@@ -229,6 +230,32 @@ final class ContentStreamBuilder
         return $this;
     }
 
+    // --- Marked Content ---
+
+    public function beginMarkedContent(string $tag, int $mcid): self
+    {
+        $this->operators[] = sprintf('/%s <</MCID %d>> BDC', $tag, $mcid);
+        $this->markedContentDepth++;
+        return $this;
+    }
+
+    public function beginMarkedContentSimple(string $tag): self
+    {
+        $this->operators[] = sprintf('/%s BMC', $tag);
+        $this->markedContentDepth++;
+        return $this;
+    }
+
+    public function endMarkedContent(): self
+    {
+        if ($this->markedContentDepth <= 0) {
+            throw new PdfException('Unbalanced endMarkedContent: no matching beginMarkedContent');
+        }
+        $this->operators[] = 'EMC';
+        $this->markedContentDepth--;
+        return $this;
+    }
+
     // --- Build ---
 
     public function build(): ContentStream
@@ -240,6 +267,12 @@ final class ContentStreamBuilder
         if ($this->graphicsStateDepth !== 0) {
             throw new PdfException(
                 sprintf('Unbalanced graphics state: %d save(s) without matching restore', $this->graphicsStateDepth)
+            );
+        }
+
+        if ($this->markedContentDepth !== 0) {
+            throw new PdfException(
+                sprintf('Unbalanced marked content: %d open sequence(s) at build time', $this->markedContentDepth)
             );
         }
 
