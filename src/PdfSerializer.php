@@ -140,6 +140,37 @@ final class PdfSerializer
             $encryptObjNum = $objectNumber;
         }
 
+        $structTreeRootObjNum = 0;
+        $markInfoObjNum = 0;
+        $parentTreeObjNum = 0;
+        /** @var SplObjectStorage<StructureElement, int> */
+        $structElemObjNums = new SplObjectStorage();
+        /** @var SplObjectStorage<Page, int> */
+        $pageStructParentsMap = new SplObjectStorage();
+        $structureTree = $catalog->structureTree();
+
+        if ($structureTree !== null && !$structureTree->isEmpty()) {
+            foreach ($pages as $i => $page) {
+                $page->setStructParents($i);
+                $pageStructParentsMap[$page] = $i;
+            }
+
+            $objectNumber++;
+            $structTreeRootObjNum = $objectNumber;
+
+            $objectNumber++;
+            $markInfoObjNum = $objectNumber;
+
+            $objectNumber++;
+            $parentTreeObjNum = $objectNumber;
+
+            $this->allocateStructElemObjNums(
+                $structureTree->rootElements(),
+                $objectNumber,
+                $structElemObjNums,
+            );
+        }
+
         $totalObjects = $objectNumber;
 
         // Generate file ID and encryption handler
@@ -180,6 +211,9 @@ final class PdfSerializer
                 $buffer .= "]\n";
             }
 
+            if ($page->structParents() !== null) {
+                $buffer .= "/StructParents " . $page->structParents() . "\n";
+            }
             $buffer .= "/Contents " . $streamObjNums[$i] . " 0 R>>\n";
             $buffer .= "endobj\n";
 
@@ -407,6 +441,12 @@ final class PdfSerializer
             }
             $buffer .= "]\n";
         }
+        if ($markInfoObjNum > 0) {
+            $buffer .= "/MarkInfo " . $markInfoObjNum . " 0 R\n";
+        }
+        if ($structTreeRootObjNum > 0) {
+            $buffer .= "/StructTreeRoot " . $structTreeRootObjNum . " 0 R\n";
+        }
         $this->writeCatalogViewerPrefs($catalog, $buffer, $pages, $pageObjNums);
         $buffer .= ">>\n";
         $buffer .= "endobj\n";
@@ -460,6 +500,22 @@ final class PdfSerializer
             $buffer .= "/P " . $encryption->permissionFlags() . "\n";
             $buffer .= ">>\n";
             $buffer .= "endobj\n";
+        }
+
+        if ($structTreeRootObjNum > 0 && $structureTree !== null) {
+            $this->serializeStructureTree(
+                $buffer,
+                $offsets,
+                $structureTree,
+                $structTreeRootObjNum,
+                $markInfoObjNum,
+                $parentTreeObjNum,
+                $structElemObjNums,
+                $pageStructParentsMap,
+                $objectMap,
+                count($pages),
+                $encHandler,
+            );
         }
 
         $xrefOffset = strlen($buffer);
@@ -826,5 +882,160 @@ final class PdfSerializer
         }
         $encrypted = $handler->encryptString($s, $objNum, 0);
         return '<' . bin2hex($encrypted) . '>';
+    }
+
+    /**
+     * @param array<int, StructureElement> $elements
+     * @param SplObjectStorage<StructureElement, int> $structElemObjNums
+     */
+    private function allocateStructElemObjNums(
+        array $elements,
+        int &$objectNumber,
+        SplObjectStorage $structElemObjNums,
+    ): void {
+        foreach ($elements as $element) {
+            $objectNumber++;
+            $structElemObjNums[$element] = $objectNumber;
+            if (!empty($element->children())) {
+                $this->allocateStructElemObjNums($element->children(), $objectNumber, $structElemObjNums);
+            }
+        }
+    }
+
+    /**
+     * @param SplObjectStorage<StructureElement, int> $structElemObjNums
+     * @param SplObjectStorage<Page, int> $pageStructParentsMap
+     * @param SplObjectStorage<object, int> $objectMap
+     */
+    private function serializeStructureTree(
+        string &$buffer,
+        array &$offsets,
+        StructureTree $tree,
+        int $structTreeRootObjNum,
+        int $markInfoObjNum,
+        int $parentTreeObjNum,
+        SplObjectStorage $structElemObjNums,
+        SplObjectStorage $pageStructParentsMap,
+        SplObjectStorage $objectMap,
+        int $pageCount,
+        ?EncryptionHandler $encHandler,
+    ): void {
+        // MarkInfo
+        $offsets[$markInfoObjNum] = strlen($buffer);
+        $buffer .= $markInfoObjNum . " 0 obj\n";
+        $buffer .= "<</Marked true>>\n";
+        $buffer .= "endobj\n";
+
+        // StructTreeRoot
+        $offsets[$structTreeRootObjNum] = strlen($buffer);
+        $buffer .= $structTreeRootObjNum . " 0 obj\n";
+        $buffer .= "<</Type /StructTreeRoot\n";
+        $rootElements = $tree->rootElements();
+        $buffer .= "/K [";
+        foreach ($rootElements as $elem) {
+            $buffer .= $structElemObjNums[$elem] . " 0 R ";
+        }
+        $buffer .= "]\n";
+        $buffer .= "/ParentTree " . $parentTreeObjNum . " 0 R\n";
+        $buffer .= "/ParentTreeNextKey " . $pageCount . "\n";
+        $buffer .= ">>\n";
+        $buffer .= "endobj\n";
+
+        // StructElem objects
+        $this->serializeStructElements(
+            $buffer,
+            $offsets,
+            $rootElements,
+            $structTreeRootObjNum,
+            $structElemObjNums,
+            $objectMap,
+            $encHandler,
+        );
+
+        // ParentTree
+        $parentTree = $tree->buildParentTree($pageStructParentsMap);
+        $offsets[$parentTreeObjNum] = strlen($buffer);
+        $buffer .= $parentTreeObjNum . " 0 obj\n";
+        $buffer .= "<</Nums [\n";
+        for ($i = 0; $i < $pageCount; $i++) {
+            $buffer .= $i . " [";
+            if (isset($parentTree[$i])) {
+                ksort($parentTree[$i]);
+                foreach ($parentTree[$i] as $elem) {
+                    $buffer .= $structElemObjNums[$elem] . " 0 R ";
+                }
+            }
+            $buffer .= "]\n";
+        }
+        $buffer .= "]>>\n";
+        $buffer .= "endobj\n";
+    }
+
+    /**
+     * @param array<int, StructureElement> $elements
+     * @param SplObjectStorage<StructureElement, int> $structElemObjNums
+     * @param SplObjectStorage<object, int> $objectMap
+     */
+    private function serializeStructElements(
+        string &$buffer,
+        array &$offsets,
+        array $elements,
+        int $parentObjNum,
+        SplObjectStorage $structElemObjNums,
+        SplObjectStorage $objectMap,
+        ?EncryptionHandler $encHandler,
+    ): void {
+        foreach ($elements as $element) {
+            $objNum = $structElemObjNums[$element];
+            $offsets[$objNum] = strlen($buffer);
+            $buffer .= $objNum . " 0 obj\n";
+            $buffer .= "<</Type /StructElem\n";
+            $buffer .= "/S /" . $element->type->value . "\n";
+            $buffer .= "/P " . $parentObjNum . " 0 R\n";
+
+            $children = $element->children();
+            $mcids = $element->markedContentIds();
+
+            if (!empty($children) || !empty($mcids)) {
+                $buffer .= "/K [";
+                foreach ($mcids as $mc) {
+                    $buffer .= $mc['mcid'] . " ";
+                }
+                foreach ($children as $child) {
+                    $buffer .= $structElemObjNums[$child] . " 0 R ";
+                }
+                $buffer .= "]\n";
+            }
+
+            if (!empty($mcids)) {
+                $pageObjNum = $objectMap[$mcids[0]['page']];
+                $buffer .= "/Pg " . $pageObjNum . " 0 R\n";
+            }
+
+            if ($element->altText !== null) {
+                $buffer .= "/Alt " . $this->encTextString($element->altText, $objNum, $encHandler) . "\n";
+            }
+            if ($element->actualText !== null) {
+                $buffer .= "/ActualText " . $this->encTextString($element->actualText, $objNum, $encHandler) . "\n";
+            }
+            if ($element->lang !== null) {
+                $buffer .= "/Lang " . $this->encTextString($element->lang, $objNum, $encHandler) . "\n";
+            }
+
+            $buffer .= ">>\n";
+            $buffer .= "endobj\n";
+
+            if (!empty($children)) {
+                $this->serializeStructElements(
+                    $buffer,
+                    $offsets,
+                    $children,
+                    $objNum,
+                    $structElemObjNums,
+                    $objectMap,
+                    $encHandler,
+                );
+            }
+        }
     }
 }
