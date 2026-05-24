@@ -41,12 +41,14 @@ final class PdfSerializer
         $allImages = [];
         $allExtGStates = [];
         $allForms = [];
+        $allColorSpaces = [];
         $fontObjNums = [];
         $imageObjNums = [];
         $pageResourceFontObjNums = [];
         $pageResourceImageObjNums = [];
         $pageResourceGStateObjNums = [];
         $pageResourceFormObjNums = [];
+        $pageResourceColorSpaceObjNums = [];
 
         foreach ($pages as $i => $page) {
             $res = $page->resourceDictionary();
@@ -101,11 +103,24 @@ final class PdfSerializer
 
             $pageFormNums = [];
             foreach ($res->forms() as $localName => $form) {
-                $this->collectForm($form, $allForms, $allFonts, $allImages, $allExtGStates, $objectNumber);
+                $this->collectForm($form, $allForms, $allFonts, $allImages, $allExtGStates, $allColorSpaces, $objectNumber);
                 $key = spl_object_id($form);
                 $pageFormNums[$localName] = $allForms[$key]['objNum'];
             }
             $pageResourceFormObjNums[$i] = $pageFormNums;
+
+            $pageCSNums = [];
+            foreach ($res->colorSpaces() as $localName => $cs) {
+                $key = spl_object_id($cs);
+                if (!isset($allColorSpaces[$key])) {
+                    $objectNumber++;
+                    $allColorSpaces[$key] = ['cs' => $cs, 'objNum' => $objectNumber];
+                    $objectNumber++;
+                    $allColorSpaces[$key]['streamObjNum'] = $objectNumber;
+                }
+                $pageCSNums[$localName] = $allColorSpaces[$key]['objNum'];
+            }
+            $pageResourceColorSpaceObjNums[$i] = $pageCSNums;
         }
 
         $resourceDictObjNums = [];
@@ -364,6 +379,40 @@ final class PdfSerializer
             $buffer .= "endobj\n";
         }
 
+        foreach ($allColorSpaces as $entry) {
+            $cs = $entry['cs'];
+            $objNum = $entry['objNum'];
+            $streamObjNum = $entry['streamObjNum'];
+            $profile = $cs->profile;
+
+            $offsets[$objNum] = strlen($buffer);
+            $buffer .= $objNum . " 0 obj\n";
+            $buffer .= "[/ICCBased " . $streamObjNum . " 0 R]\n";
+            $buffer .= "endobj\n";
+
+            $streamData = $this->compress ? @gzcompress($profile->data) : false;
+            $useCompression = $streamData !== false && $this->compress;
+            if (!$useCompression) {
+                $streamData = $profile->data;
+            }
+            if ($encHandler !== null) {
+                $streamData = $encHandler->encryptStream($streamData, $streamObjNum, 0);
+            }
+
+            $offsets[$streamObjNum] = strlen($buffer);
+            $buffer .= $streamObjNum . " 0 obj\n";
+            $buffer .= "<</N " . $profile->componentCount . "\n";
+            $buffer .= "/Alternate /" . $profile->alternateSpace() . "\n";
+            if ($useCompression) {
+                $buffer .= "/Filter /FlateDecode\n";
+            }
+            $buffer .= "/Length " . strlen($streamData) . ">>\n";
+            $buffer .= "stream\n";
+            $buffer .= $streamData . "\n";
+            $buffer .= "endstream\n";
+            $buffer .= "endobj\n";
+        }
+
         foreach ($allForms as $entry) {
             $form = $entry['form'];
             $objNum = $entry['objNum'];
@@ -453,6 +502,14 @@ final class PdfSerializer
                     $buffer .= " >>\n";
                 }
 
+                if (!empty($entry['csObjNums'])) {
+                    $buffer .= "/ColorSpace <<";
+                    foreach ($entry['csObjNums'] as $localName => $csObjNum) {
+                        $buffer .= " /" . $localName . " " . $csObjNum . " 0 R";
+                    }
+                    $buffer .= " >>\n";
+                }
+
                 $buffer .= ">>\n";
                 $buffer .= "endobj\n";
             }
@@ -482,6 +539,13 @@ final class PdfSerializer
             if (!empty($pageResourceGStateObjNums[$i])) {
                 $buffer .= "/ExtGState <<";
                 foreach ($pageResourceGStateObjNums[$i] as $localName => $objNum) {
+                    $buffer .= " /" . $localName . " " . $objNum . " 0 R";
+                }
+                $buffer .= " >>\n";
+            }
+            if (!empty($pageResourceColorSpaceObjNums[$i])) {
+                $buffer .= "/ColorSpace <<";
+                foreach ($pageResourceColorSpaceObjNums[$i] as $localName => $objNum) {
                     $buffer .= " /" . $localName . " " . $objNum . " 0 R";
                 }
                 $buffer .= " >>\n";
@@ -663,6 +727,7 @@ final class PdfSerializer
         array &$allFonts,
         array &$allImages,
         array &$allExtGStates,
+        array &$allColorSpaces,
         int &$objectNumber,
         array $visiting = [],
     ): void {
@@ -731,9 +796,21 @@ final class PdfSerializer
         }
 
         foreach ($res->forms() as $localName => $nestedForm) {
-            $this->collectForm($nestedForm, $allForms, $allFonts, $allImages, $allExtGStates, $objectNumber, $visiting);
+            $this->collectForm($nestedForm, $allForms, $allFonts, $allImages, $allExtGStates, $allColorSpaces, $objectNumber, $visiting);
             $nKey = spl_object_id($nestedForm);
             $formObjNums[$localName] = $allForms[$nKey]['objNum'];
+        }
+
+        $csObjNums = [];
+        foreach ($res->colorSpaces() as $localName => $cs) {
+            $csKey = spl_object_id($cs);
+            if (!isset($allColorSpaces[$csKey])) {
+                $objectNumber++;
+                $allColorSpaces[$csKey] = ['cs' => $cs, 'objNum' => $objectNumber];
+                $objectNumber++;
+                $allColorSpaces[$csKey]['streamObjNum'] = $objectNumber;
+            }
+            $csObjNums[$localName] = $allColorSpaces[$csKey]['objNum'];
         }
 
         if (!$res->isEmpty()) {
@@ -743,6 +820,7 @@ final class PdfSerializer
             $allForms[$key]['imageObjNums'] = $imageObjNums;
             $allForms[$key]['gsObjNums'] = $gsObjNums;
             $allForms[$key]['formObjNums'] = $formObjNums;
+            $allForms[$key]['csObjNums'] = $csObjNums;
         }
     }
 

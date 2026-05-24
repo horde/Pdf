@@ -35,6 +35,14 @@ final class ContentStreamBuilder
     /** @var array<int, string> spl_object_id → local name (X1, X2, ...) */
     private array $formNameIndex = [];
 
+    /** @var array<string, IccBasedColorSpace> */
+    private array $colorSpaceMap = [];
+
+    private int $colorSpaceCounter = 0;
+
+    /** @var array<int, string> spl_object_id → local name (CS1, CS2, ...) */
+    private array $colorSpaceNameIndex = [];
+
     // --- Graphics state ---
 
     public function save(): self
@@ -85,6 +93,20 @@ final class ContentStreamBuilder
     public function setStrokeColor(Color $color): self
     {
         $this->operators[] = $color->toPdfStrokeString();
+        return $this;
+    }
+
+    public function setIccFillColor(IccColor $color): self
+    {
+        $localName = $this->registerColorSpace($color->colorSpace());
+        $this->operators[] = $color->toPdfFillString($localName);
+        return $this;
+    }
+
+    public function setIccStrokeColor(IccColor $color): self
+    {
+        $localName = $this->registerColorSpace($color->colorSpace());
+        $this->operators[] = $color->toPdfStrokeString($localName);
         return $this;
     }
 
@@ -318,6 +340,10 @@ final class ContentStreamBuilder
             $resources->addForm($localName, $form);
         }
 
+        foreach ($this->colorSpaceMap as $localName => $cs) {
+            $resources->addColorSpace($localName, $cs);
+        }
+
         $operators = implode("\n", $this->operators);
 
         return new ContentStream($operators, $resources);
@@ -366,6 +392,21 @@ final class ContentStreamBuilder
         $localName = 'X' . (++$this->formCounter);
         $this->formNameIndex[$id] = $localName;
         $this->formMap[$localName] = $form;
+
+        return $localName;
+    }
+
+    private function registerColorSpace(IccBasedColorSpace $cs): string
+    {
+        $id = spl_object_id($cs);
+
+        if (isset($this->colorSpaceNameIndex[$id])) {
+            return $this->colorSpaceNameIndex[$id];
+        }
+
+        $localName = 'CS' . (++$this->colorSpaceCounter);
+        $this->colorSpaceNameIndex[$id] = $localName;
+        $this->colorSpaceMap[$localName] = $cs;
 
         return $localName;
     }
