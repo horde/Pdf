@@ -36,9 +36,12 @@
         "horde/exception": "^3 || dev-FRAMEWORK_6_0",
         "horde/util": "^3 || dev-FRAMEWORK_6_0"
     },
-    "require-dev": {},
+    "require-dev": {
+        "horde/xml_element": "dev-FRAMEWORK_6_0"
+    },
     "suggest": {
-        "horde/test": "^3 || dev-FRAMEWORK_6_0"
+        "horde/test": "^3 || dev-FRAMEWORK_6_0",
+        "horde/xml_element": "^3 || dev-FRAMEWORK_6_0 — required for XmpBuilder"
     },
     "autoload": {
         "psr-0": {

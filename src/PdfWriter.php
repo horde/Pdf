@@ -282,6 +282,12 @@ final class PdfWriter
         if (!empty($this->bookmarks)) {
             $catalog->setOutlines($this->buildOutlineTree($pageObjects));
         }
+        if ($this->metadata !== null) {
+            $catalog->setMetadata($this->metadata);
+        }
+        foreach ($this->outputIntents as $intent) {
+            $catalog->addOutputIntent($intent);
+        }
 
         return (new PdfSerializer(compress: $this->compress))->serialize($catalog);
     }
@@ -1117,6 +1123,22 @@ final class PdfWriter
             'page' => $this->pageNumber,
             'y' => $y ?? $this->y,
         ];
+    }
+
+    // --- XMP Metadata & Output Intents ---
+
+    private ?MetadataStream $metadata = null;
+    /** @var array<OutputIntent> */
+    private array $outputIntents = [];
+
+    public function setMetadata(MetadataStream $metadata): void
+    {
+        $this->metadata = $metadata;
+    }
+
+    public function addOutputIntent(OutputIntent $intent): void
+    {
+        $this->outputIntents[] = $intent;
     }
 
     // --- Metadata ---

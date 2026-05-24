@@ -51,6 +51,10 @@ dependencies:
   optional:
     composer:
       horde/test: ^3
+      horde/xml_element: ^3
+  dev:
+    composer:
+      horde/xml_element: dev-FRAMEWORK_6_0
 keywords:
   - iso32000
 vendor: horde

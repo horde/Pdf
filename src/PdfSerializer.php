@@ -119,6 +119,20 @@ final class PdfSerializer
             $this->allocateOutlineObjNums($outlines->items(), $objectNumber, $outlineObjNums);
         }
 
+        $metadataObjNum = 0;
+        $metadata = $catalog->metadata();
+        if ($metadata !== null) {
+            $objectNumber++;
+            $metadataObjNum = $objectNumber;
+        }
+
+        $outputIntentObjNums = [];
+        $outputIntents = $catalog->outputIntents();
+        foreach ($outputIntents as $intent) {
+            $objectNumber++;
+            $outputIntentObjNums[] = $objectNumber;
+        }
+
         $totalObjects = $objectNumber;
 
         $buffer .= $catalog->version->header() . "\n";
@@ -347,12 +361,45 @@ final class PdfSerializer
             $buffer .= "/Outlines " . $outlineRootObjNum . " 0 R\n";
             $buffer .= "/PageMode /UseOutlines\n";
         }
+        if ($metadataObjNum > 0) {
+            $buffer .= "/Metadata " . $metadataObjNum . " 0 R\n";
+        }
+        if (!empty($outputIntentObjNums)) {
+            $buffer .= '/OutputIntents [';
+            foreach ($outputIntentObjNums as $oiNum) {
+                $buffer .= $oiNum . ' 0 R ';
+            }
+            $buffer .= "]\n";
+        }
         $this->writeCatalogViewerPrefs($catalog, $buffer, $pages, $pageObjNums);
         $buffer .= ">>\n";
         $buffer .= "endobj\n";
 
         if ($outlineRootObjNum > 0) {
             $this->serializeOutlines($buffer, $offsets, $outlines, $outlineRootObjNum, $outlineObjNums, $objectMap);
+        }
+
+        if ($metadataObjNum > 0) {
+            $offsets[$metadataObjNum] = strlen($buffer);
+            $buffer .= $metadataObjNum . " 0 obj\n";
+            $buffer .= "<</Type /Metadata /Subtype /XML /Length " . strlen($metadata->xml) . ">>\n";
+            $buffer .= "stream\n";
+            $buffer .= $metadata->xml . "\n";
+            $buffer .= "endstream\n";
+            $buffer .= "endobj\n";
+        }
+
+        foreach ($outputIntents as $idx => $intent) {
+            $objNum = $outputIntentObjNums[$idx];
+            $offsets[$objNum] = strlen($buffer);
+            $buffer .= $objNum . " 0 obj\n";
+            $buffer .= "<</Type /OutputIntent\n";
+            $buffer .= "/S /" . $intent->subtype . "\n";
+            $buffer .= "/OutputConditionIdentifier " . self::textString($intent->outputConditionIdentifier) . "\n";
+            $buffer .= "/RegistryName " . self::textString($intent->registryName) . "\n";
+            $buffer .= "/Info " . self::textString($intent->info) . "\n";
+            $buffer .= ">>\n";
+            $buffer .= "endobj\n";
         }
 
         $xrefOffset = strlen($buffer);
@@ -458,7 +505,6 @@ final class PdfSerializer
 
     /**
      * @param array<string, mixed> $entry
-     * @param array<int, int> $offsets
      */
     private function serializeType0Font(string &$buffer, array &$offsets, array $entry): void
     {
@@ -593,7 +639,6 @@ final class PdfSerializer
     }
 
     /**
-     * @param array<int, string> $offsets
      * @param array<int, OutlineItem> $outlineObjNums
      * @param SplObjectStorage<object, int> $objectMap
      */
