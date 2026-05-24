@@ -279,6 +279,9 @@ final class PdfWriter
         if ($this->viewerPreferences !== null) {
             $catalog->setViewerPreferences($this->viewerPreferences);
         }
+        if (!empty($this->bookmarks)) {
+            $catalog->setOutlines($this->buildOutlineTree($pageObjects));
+        }
 
         return (new PdfSerializer(compress: $this->compress))->serialize($catalog);
     }
@@ -1101,6 +1104,21 @@ final class PdfWriter
         ));
     }
 
+    // --- Bookmarks ---
+
+    /** @var array<array{title: string, level: int, page: int, y: float}> */
+    private array $bookmarks = [];
+
+    public function addBookmark(string $title, int $level = 0, ?float $y = null): void
+    {
+        $this->bookmarks[] = [
+            'title' => $title,
+            'level' => $level,
+            'page' => $this->pageNumber,
+            'y' => $y ?? $this->y,
+        ];
+    }
+
     // --- Metadata ---
 
     public function aliasNbPages(string $alias = '{nb}'): void
@@ -1401,5 +1419,44 @@ final class PdfWriter
                 $page->addAnnotation($annot);
             }
         }
+    }
+
+    /**
+     * @param array<int, Page> $pageObjects
+     */
+    private function buildOutlineTree(array $pageObjects): OutlineTree
+    {
+        $tree = new OutlineTree();
+        $k = $this->scaleFactor;
+
+        /** @var array<int, OutlineItem> */
+        $stack = [];
+
+        foreach ($this->bookmarks as $bm) {
+            $page = $pageObjects[$bm['page']] ?? null;
+            $destination = null;
+            if ($page !== null) {
+                $hPt = $page->mediaBox->height();
+                $destination = new Destination($page, top: $hPt - $bm['y'] * $k);
+            }
+
+            $item = new OutlineItem($bm['title'], $destination, open: true);
+            $level = $bm['level'];
+
+            if ($level === 0) {
+                $tree->add($item);
+                $stack = [0 => $item];
+            } else {
+                $parentLevel = $level - 1;
+                if (isset($stack[$parentLevel])) {
+                    $stack[$parentLevel]->addChild($item);
+                } else {
+                    $tree->add($item);
+                }
+                $stack[$level] = $item;
+            }
+        }
+
+        return $tree;
     }
 }

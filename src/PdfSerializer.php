@@ -110,6 +110,15 @@ final class PdfSerializer
         $objectNumber++;
         $catalogObjNum = $objectNumber;
 
+        $outlineObjNums = [];
+        $outlineRootObjNum = 0;
+        $outlines = $catalog->outlines();
+        if ($outlines !== null && !$outlines->isEmpty()) {
+            $objectNumber++;
+            $outlineRootObjNum = $objectNumber;
+            $this->allocateOutlineObjNums($outlines->items(), $objectNumber, $outlineObjNums);
+        }
+
         $totalObjects = $objectNumber;
 
         $buffer .= $catalog->version->header() . "\n";
@@ -334,9 +343,17 @@ final class PdfSerializer
         $buffer .= $catalogObjNum . " 0 obj\n";
         $buffer .= "<</Type /Catalog\n";
         $buffer .= "/Pages " . $pageTreeObjNum . " 0 R\n";
+        if ($outlineRootObjNum > 0) {
+            $buffer .= "/Outlines " . $outlineRootObjNum . " 0 R\n";
+            $buffer .= "/PageMode /UseOutlines\n";
+        }
         $this->writeCatalogViewerPrefs($catalog, $buffer, $pages, $pageObjNums);
         $buffer .= ">>\n";
         $buffer .= "endobj\n";
+
+        if ($outlineRootObjNum > 0) {
+            $this->serializeOutlines($buffer, $offsets, $outlines, $outlineRootObjNum, $outlineObjNums, $objectMap);
+        }
 
         $xrefOffset = strlen($buffer);
         $buffer .= "xref\n";
@@ -558,6 +575,116 @@ final class PdfSerializer
         $buffer .= $cidToGidStream . "\n";
         $buffer .= "endstream\n";
         $buffer .= "endobj\n";
+    }
+
+    /**
+     * @param array<OutlineItem> $items
+     * @param array<int, OutlineItem> $outlineObjNums
+     */
+    private function allocateOutlineObjNums(array $items, int &$objectNumber, array &$outlineObjNums): void
+    {
+        foreach ($items as $item) {
+            $objectNumber++;
+            $outlineObjNums[$objectNumber] = $item;
+            if ($item->hasChildren()) {
+                $this->allocateOutlineObjNums($item->children(), $objectNumber, $outlineObjNums);
+            }
+        }
+    }
+
+    /**
+     * @param array<int, string> $offsets
+     * @param array<int, OutlineItem> $outlineObjNums
+     * @param SplObjectStorage<object, int> $objectMap
+     */
+    private function serializeOutlines(
+        string &$buffer,
+        array &$offsets,
+        OutlineTree $outlines,
+        int $rootObjNum,
+        array $outlineObjNums,
+        SplObjectStorage $objectMap,
+    ): void {
+        $itemToObjNum = new SplObjectStorage();
+        foreach ($outlineObjNums as $objNum => $item) {
+            $itemToObjNum[$item] = $objNum;
+        }
+
+        $topItems = $outlines->items();
+        $firstTopObjNum = $itemToObjNum[$topItems[0]];
+        $lastTopObjNum = $itemToObjNum[$topItems[count($topItems) - 1]];
+
+        $offsets[$rootObjNum] = strlen($buffer);
+        $buffer .= $rootObjNum . " 0 obj\n";
+        $buffer .= "<</Type /Outlines\n";
+        $buffer .= "/First " . $firstTopObjNum . " 0 R\n";
+        $buffer .= "/Last " . $lastTopObjNum . " 0 R\n";
+        $buffer .= "/Count " . $outlines->totalCount() . "\n";
+        $buffer .= ">>\n";
+        $buffer .= "endobj\n";
+
+        $this->serializeOutlineItems($buffer, $offsets, $topItems, $rootObjNum, $itemToObjNum, $objectMap);
+    }
+
+    /**
+     * @param array<OutlineItem> $siblings
+     * @param SplObjectStorage<OutlineItem, int> $itemToObjNum
+     * @param SplObjectStorage<object, int> $objectMap
+     */
+    private function serializeOutlineItems(
+        string &$buffer,
+        array &$offsets,
+        array $siblings,
+        int $parentObjNum,
+        SplObjectStorage $itemToObjNum,
+        SplObjectStorage $objectMap,
+    ): void {
+        $count = count($siblings);
+        for ($i = 0; $i < $count; $i++) {
+            $item = $siblings[$i];
+            $objNum = $itemToObjNum[$item];
+
+            $offsets[$objNum] = strlen($buffer);
+            $buffer .= $objNum . " 0 obj\n";
+            $buffer .= "<<\n";
+            $buffer .= "/Title " . self::textString($item->title) . "\n";
+            $buffer .= "/Parent " . $parentObjNum . " 0 R\n";
+
+            if ($i > 0) {
+                $buffer .= "/Prev " . $itemToObjNum[$siblings[$i - 1]] . " 0 R\n";
+            }
+            if ($i < $count - 1) {
+                $buffer .= "/Next " . $itemToObjNum[$siblings[$i + 1]] . " 0 R\n";
+            }
+
+            if ($item->hasChildren()) {
+                $children = $item->children();
+                $firstChild = $itemToObjNum[$children[0]];
+                $lastChild = $itemToObjNum[$children[count($children) - 1]];
+                $buffer .= "/First " . $firstChild . " 0 R\n";
+                $buffer .= "/Last " . $lastChild . " 0 R\n";
+                $descendantCount = $item->descendantCount();
+                $buffer .= "/Count " . ($item->open ? $descendantCount : -$descendantCount) . "\n";
+            }
+
+            if ($item->destination !== null) {
+                $pageObjNum = $objectMap->contains($item->destination->page)
+                    ? $objectMap[$item->destination->page]
+                    : 0;
+                $buffer .= sprintf(
+                    "/Dest [%d 0 R /XYZ 0 %.2F null]\n",
+                    $pageObjNum,
+                    $item->destination->top,
+                );
+            }
+
+            $buffer .= ">>\n";
+            $buffer .= "endobj\n";
+
+            if ($item->hasChildren()) {
+                $this->serializeOutlineItems($buffer, $offsets, $item->children(), $objNum, $itemToObjNum, $objectMap);
+            }
+        }
     }
 
     private static function escapeString(string $s): string
