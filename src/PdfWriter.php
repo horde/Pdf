@@ -288,6 +288,9 @@ final class PdfWriter
         foreach ($this->outputIntents as $intent) {
             $catalog->addOutputIntent($intent);
         }
+        if ($this->encryption !== null) {
+            $catalog->setEncryption($this->encryption);
+        }
 
         return (new PdfSerializer(compress: $this->compress))->serialize($catalog);
     }
@@ -1139,6 +1142,15 @@ final class PdfWriter
     public function addOutputIntent(OutputIntent $intent): void
     {
         $this->outputIntents[] = $intent;
+    }
+
+    // --- Encryption ---
+
+    private ?EncryptionConfig $encryption = null;
+
+    public function setEncryption(EncryptionConfig $config): void
+    {
+        $this->encryption = $config;
     }
 
     // --- Metadata ---

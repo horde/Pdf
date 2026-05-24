@@ -13,6 +13,7 @@ final class DocumentCatalog
     private ?MetadataStream $metadata = null;
     /** @var array<OutputIntent> */
     private array $outputIntents = [];
+    private ?EncryptionConfig $encryption = null;
 
     public function __construct(
         public readonly PdfVersion $version = PdfVersion::V1_7,
@@ -81,5 +82,15 @@ final class DocumentCatalog
     public function outputIntents(): array
     {
         return $this->outputIntents;
+    }
+
+    public function setEncryption(EncryptionConfig $encryption): void
+    {
+        $this->encryption = $encryption;
+    }
+
+    public function encryption(): ?EncryptionConfig
+    {
+        return $this->encryption;
     }
 }

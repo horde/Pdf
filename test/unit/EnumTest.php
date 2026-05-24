@@ -137,7 +137,7 @@ class EnumTest extends TestCase
         $this->assertSame('%PDF-1.4', PdfVersion::V1_4->header());
         $this->assertSame('%PDF-1.7', PdfVersion::V1_7->header());
         $this->assertSame('%PDF-2.0', PdfVersion::V2_0->header());
-        $this->assertCount(4, PdfVersion::cases());
+        $this->assertCount(5, PdfVersion::cases());
     }
 
     public function testFontStyleValues(): void
