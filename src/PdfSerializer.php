@@ -40,11 +40,13 @@ final class PdfSerializer
         $allFonts = [];
         $allImages = [];
         $allExtGStates = [];
+        $allForms = [];
         $fontObjNums = [];
         $imageObjNums = [];
         $pageResourceFontObjNums = [];
         $pageResourceImageObjNums = [];
         $pageResourceGStateObjNums = [];
+        $pageResourceFormObjNums = [];
 
         foreach ($pages as $i => $page) {
             $res = $page->resourceDictionary();
@@ -96,6 +98,14 @@ final class PdfSerializer
                 $pageGStateNums[$localName] = $allExtGStates[$key]['objNum'];
             }
             $pageResourceGStateObjNums[$i] = $pageGStateNums;
+
+            $pageFormNums = [];
+            foreach ($res->forms() as $localName => $form) {
+                $this->collectForm($form, $allForms, $allFonts, $allImages, $allExtGStates, $objectNumber);
+                $key = spl_object_id($form);
+                $pageFormNums[$localName] = $allForms[$key]['objNum'];
+            }
+            $pageResourceFormObjNums[$i] = $pageFormNums;
         }
 
         $resourceDictObjNums = [];
@@ -354,6 +364,100 @@ final class PdfSerializer
             $buffer .= "endobj\n";
         }
 
+        foreach ($allForms as $entry) {
+            $form = $entry['form'];
+            $objNum = $entry['objNum'];
+            $offsets[$objNum] = strlen($buffer);
+
+            $content = $form->operators;
+            $streamData = $this->compress ? @gzcompress($content) : false;
+            $useCompression = $streamData !== false && $this->compress;
+            if (!$useCompression) {
+                $streamData = $content;
+            }
+            if ($encHandler !== null) {
+                $streamData = $encHandler->encryptStream($streamData, $objNum, 0);
+            }
+
+            $buffer .= $objNum . " 0 obj\n";
+            $buffer .= "<</Type /XObject\n";
+            $buffer .= "/Subtype /Form\n";
+            $buffer .= "/FormType 1\n";
+            $buffer .= "/BBox " . $form->bbox->toPdfArray() . "\n";
+
+            if ($form->matrix !== null) {
+                $buffer .= sprintf(
+                    "/Matrix [%.4F %.4F %.4F %.4F %.4F %.4F]\n",
+                    $form->matrix->a,
+                    $form->matrix->b,
+                    $form->matrix->c,
+                    $form->matrix->d,
+                    $form->matrix->e,
+                    $form->matrix->f,
+                );
+            }
+
+            if ($form->group !== null) {
+                $buffer .= "/Group <</Type /Group /S /Transparency";
+                if ($form->group->colorSpace !== null) {
+                    $buffer .= " /CS /" . $form->group->colorSpace->pdfName();
+                }
+                if ($form->group->isolated) {
+                    $buffer .= " /I true";
+                }
+                if ($form->group->knockout) {
+                    $buffer .= " /K true";
+                }
+                $buffer .= ">>\n";
+            }
+
+            if (isset($entry['resourceDictObjNum'])) {
+                $buffer .= "/Resources " . $entry['resourceDictObjNum'] . " 0 R\n";
+            }
+
+            $filter = $useCompression ? '/Filter /FlateDecode ' : '';
+            $buffer .= $filter . "/Length " . strlen($streamData) . ">>\n";
+            $buffer .= "stream\n";
+            $buffer .= $streamData . "\n";
+            $buffer .= "endstream\n";
+            $buffer .= "endobj\n";
+
+            if (isset($entry['resourceDictObjNum'])) {
+                $resObjNum = $entry['resourceDictObjNum'];
+                $offsets[$resObjNum] = strlen($buffer);
+                $buffer .= $resObjNum . " 0 obj\n";
+                $buffer .= "<</ProcSet [/PDF /Text /ImageB /ImageC /ImageI]\n";
+
+                if (!empty($entry['fontObjNums'])) {
+                    $buffer .= "/Font <<";
+                    foreach ($entry['fontObjNums'] as $localName => $fObjNum) {
+                        $buffer .= " /" . $localName . " " . $fObjNum . " 0 R";
+                    }
+                    $buffer .= " >>\n";
+                }
+
+                $xObjRefs = ($entry['imageObjNums'] ?? []) + ($entry['formObjNums'] ?? []);
+                if (!empty($xObjRefs)) {
+                    $buffer .= "/XObject <<";
+                    foreach ($xObjRefs as $localName => $xObjNum) {
+                        $buffer .= " /" . $localName . " " . $xObjNum . " 0 R";
+                    }
+                    $buffer .= " >>\n";
+                }
+
+                if (!empty($entry['gsObjNums'])) {
+                    $buffer .= "/ExtGState <<";
+                    foreach ($entry['gsObjNums'] as $localName => $gsObjNum) {
+                        $buffer .= " /" . $localName . " " . $gsObjNum . " 0 R";
+                    }
+                    $buffer .= " >>\n";
+                }
+
+                $buffer .= ">>\n";
+                $buffer .= "endobj\n";
+            }
+        }
+
         foreach ($pages as $i => $page) {
             $offsets[$resourceDictObjNums[$i]] = strlen($buffer);
             $buffer .= $resourceDictObjNums[$i] . " 0 obj\n";
@@ -365,9 +469,12 @@ final class PdfSerializer
                 }
                 $buffer .= " >>\n";
             }
-            if (!empty($pageResourceImageObjNums[$i])) {
+            if (!empty($pageResourceImageObjNums[$i]) || !empty($pageResourceFormObjNums[$i])) {
                 $buffer .= "/XObject <<";
                 foreach ($pageResourceImageObjNums[$i] as $localName => $objNum) {
+                    $buffer .= " /" . $localName . " " . $objNum . " 0 R";
+                }
+                foreach ($pageResourceFormObjNums[$i] as $localName => $objNum) {
                     $buffer .= " /" . $localName . " " . $objNum . " 0 R";
                 }
                 $buffer .= " >>\n";
@@ -541,6 +648,102 @@ final class PdfSerializer
         $buffer .= "%%EOF\n";
 
         return $buffer;
+    }
+
+    /**
+     * @param array<int, mixed> $allForms
+     * @param array<string, mixed> $allFonts
+     * @param array<int, mixed> $allImages
+     * @param array<string, mixed> $allExtGStates
+     * @param array<int, bool> $visiting
+     */
+    private function collectForm(
+        FormXObject $form,
+        array &$allForms,
+        array &$allFonts,
+        array &$allImages,
+        array &$allExtGStates,
+        int &$objectNumber,
+        array $visiting = [],
+    ): void {
+        $key = spl_object_id($form);
+
+        if (isset($allForms[$key])) {
+            return;
+        }
+
+        if (isset($visiting[$key])) {
+            throw new PdfException('Circular reference detected in Form XObject nesting');
+        }
+
+        $visiting[$key] = true;
+
+        $objectNumber++;
+        $allForms[$key] = ['form' => $form, 'objNum' => $objectNumber];
+
+        $res = $form->resources;
+        $fontObjNums = [];
+        $imageObjNums = [];
+        $gsObjNums = [];
+        $formObjNums = [];
+
+        foreach ($res->fonts() as $localName => $font) {
+            $fKey = $font->pdfName();
+            if (!isset($allFonts[$fKey])) {
+                $objectNumber++;
+                $allFonts[$fKey] = ['font' => $font, 'objNum' => $objectNumber];
+                if ($font->requiresEmbedding()) {
+                    $objectNumber++;
+                    $allFonts[$fKey]['cidFontObjNum'] = $objectNumber;
+                    $objectNumber++;
+                    $allFonts[$fKey]['fontDescriptorObjNum'] = $objectNumber;
+                    $objectNumber++;
+                    $allFonts[$fKey]['fontFileObjNum'] = $objectNumber;
+                    $objectNumber++;
+                    $allFonts[$fKey]['toUnicodeObjNum'] = $objectNumber;
+                    $objectNumber++;
+                    $allFonts[$fKey]['cidToGidObjNum'] = $objectNumber;
+                }
+            }
+            $fontObjNums[$localName] = $allFonts[$fKey]['objNum'];
+        }
+
+        foreach ($res->images() as $localName => $image) {
+            $iKey = spl_object_id($image);
+            if (!isset($allImages[$iKey])) {
+                $objectNumber++;
+                $allImages[$iKey] = ['image' => $image, 'objNum' => $objectNumber];
+                if ($image->palette !== null) {
+                    $objectNumber++;
+                    $allImages[$iKey]['paletteObjNum'] = $objectNumber;
+                }
+            }
+            $imageObjNums[$localName] = $allImages[$iKey]['objNum'];
+        }
+
+        foreach ($res->extGraphicsStates() as $localName => $gs) {
+            $gKey = $gs->key();
+            if (!isset($allExtGStates[$gKey])) {
+                $objectNumber++;
+                $allExtGStates[$gKey] = ['gs' => $gs, 'objNum' => $objectNumber];
+            }
+            $gsObjNums[$localName] = $allExtGStates[$gKey]['objNum'];
+        }
+
+        foreach ($res->forms() as $localName => $nestedForm) {
+            $this->collectForm($nestedForm, $allForms, $allFonts, $allImages, $allExtGStates, $objectNumber, $visiting);
+            $nKey = spl_object_id($nestedForm);
+            $formObjNums[$localName] = $allForms[$nKey]['objNum'];
+        }
+
+        if (!$res->isEmpty()) {
+            $objectNumber++;
+            $allForms[$key]['resourceDictObjNum'] = $objectNumber;
+            $allForms[$key]['fontObjNums'] = $fontObjNums;
+            $allForms[$key]['imageObjNums'] = $imageObjNums;
+            $allForms[$key]['gsObjNums'] = $gsObjNums;
+            $allForms[$key]['formObjNums'] = $formObjNums;
+        }
     }
 
     /**

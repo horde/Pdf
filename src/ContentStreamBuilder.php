@@ -19,14 +19,21 @@ final class ContentStreamBuilder
     /** @var array<string, ImageXObject> */
     private array $imageMap = [];
 
+    /** @var array<string, FormXObject> */
+    private array $formMap = [];
+
     private int $fontCounter = 0;
     private int $imageCounter = 0;
+    private int $formCounter = 0;
 
     /** @var array<string, string> pdfName → local name (F1, F2, ...) */
     private array $fontNameIndex = [];
 
     /** @var array<int, string> spl_object_id → local name (I1, I2, ...) */
     private array $imageNameIndex = [];
+
+    /** @var array<int, string> spl_object_id → local name (X1, X2, ...) */
+    private array $formNameIndex = [];
 
     // --- Graphics state ---
 
@@ -262,6 +269,21 @@ final class ContentStreamBuilder
         return $this;
     }
 
+    // --- Form XObjects ---
+
+    public function drawFormXObject(
+        FormXObject $form,
+        ?AffineTransform $transform = null,
+    ): self {
+        $localName = $this->registerForm($form);
+        if ($transform !== null) {
+            $this->operators[] = sprintf('q %s /%s Do Q', $transform->toPdfOperator(), $localName);
+        } else {
+            $this->operators[] = sprintf('q /%s Do Q', $localName);
+        }
+        return $this;
+    }
+
     // --- Build ---
 
     public function build(): ContentStream
@@ -290,6 +312,10 @@ final class ContentStreamBuilder
 
         foreach ($this->imageMap as $localName => $image) {
             $resources->addImage($localName, $image);
+        }
+
+        foreach ($this->formMap as $localName => $form) {
+            $resources->addForm($localName, $form);
         }
 
         $operators = implode("\n", $this->operators);
@@ -325,6 +351,21 @@ final class ContentStreamBuilder
         $localName = 'I' . (++$this->imageCounter);
         $this->imageNameIndex[$id] = $localName;
         $this->imageMap[$localName] = $image;
+
+        return $localName;
+    }
+
+    private function registerForm(FormXObject $form): string
+    {
+        $id = spl_object_id($form);
+
+        if (isset($this->formNameIndex[$id])) {
+            return $this->formNameIndex[$id];
+        }
+
+        $localName = 'X' . (++$this->formCounter);
+        $this->formNameIndex[$id] = $localName;
+        $this->formMap[$localName] = $form;
 
         return $localName;
     }
