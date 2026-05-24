@@ -9,6 +9,7 @@ final class DocumentCatalog
     private PageTree $pageTree;
     private ?DocumentInfo $info = null;
     private ?ViewerPreferences $viewerPreferences = null;
+    private ?OutlineTree $outlines = null;
 
     public function __construct(
         public readonly PdfVersion $version = PdfVersion::V1_7,
@@ -31,6 +32,11 @@ final class DocumentCatalog
         $this->viewerPreferences = $prefs;
     }
 
+    public function setOutlines(OutlineTree $outlines): void
+    {
+        $this->outlines = $outlines;
+    }
+
     public function pageTree(): PageTree
     {
         return $this->pageTree;
@@ -44,5 +50,10 @@ final class DocumentCatalog
     public function viewerPreferences(): ?ViewerPreferences
     {
         return $this->viewerPreferences;
+    }
+
+    public function outlines(): ?OutlineTree
+    {
+        return $this->outlines;
     }
 }
