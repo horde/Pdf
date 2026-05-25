@@ -41,6 +41,33 @@
     Update metadata and workflows for PHP 8 support
     Add CI job for satis repo update
     Development mode for Pdf-3.0.0alpha3
+3.0.0-RC1:
+  api: 3.0.0-RC1
+  state:
+    release: RC
+    api: RC
+  date: 2026-05-25
+  license:
+    identifier: LGPL-2.1-only
+    uri: https://spdx.org/licenses/LGPL-2.1-only.html
+  notes: |-
+    feat: Separation and DeviceN color spaces (ISO 32000-2 §8.6.6-7) #28
+    feat: ICCBased color space (ISO 32000-2 §8.6.5) #27
+    feat: implement Form XObjects (ISO 32000-2 §8.10) for #15
+    feat: tagged PDF / accessibility (ISO 32000-2 §14.8) #15
+    feat: text rendering modes (ISO 32000-2 §9.3.6) #26
+    feat: Implement PDF encryption (AES-128/AES-256) for issue #14
+    feat: Implement XMP metadata and PDF/A groundwork for issue #14
+    feat: Implement bookmarks for issue #14 (Document Root Object Structure)
+    feat: Implement graphics state, transparency and affine transforms
+    feat: Implement FontResolver and FontProvider architecture
+    feat: Implement TrueType font embedding with subsetting
+    feat: Implement color getters and setFontStyle on PdfWriter
+    feat: Implement text() on PdfWriter
+    feat: Implement drawing primitives on PdfWriter
+    chore: Add gitignore entries
+    feat: Implement drawing primitives on PdfWriter
+    chore: Update workflow dependency
 2.0.8:
   api: 1.0.0
   state:
