@@ -9,35 +9,31 @@ list: dev
 type: library
 homepage: https://www.horde.org/libraries/Horde_Pdf
 authors:
-  -
-    name: Ralf Lang
+  - name: Ralf Lang
     user: rlang
     email: ralf.lang@ralf-lang.de
     active: trueB
     role: lead
-  -
-    name: Jan Schneider
+  - name: Jan Schneider
     user: jan
     email: jan@horde.org
     active: false
     role: lead
-  -
-    name: Mike Naberezny
+  - name: Mike Naberezny
     user: mnaberez
     email: mike@maintainable.com
     active: false
     role: lead
-  -
-    name: Chuck Hagenbuch
+  - name: Chuck Hagenbuch
     user: chuck
     email: chuck@horde.org
     active: false
     role: lead
 version:
-  release: 3.0.0-RC1
+  release: 3.1.0-alpha
   api: 1.0.0
 state:
-  release: RC
+  release: alpha
   api: stable
 license:
   identifier: LGPL-2.1-only
